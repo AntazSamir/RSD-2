@@ -30,6 +30,7 @@ export function useOrderForm({
       return [
         ...prev,
         {
+          id: `item-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
           menuItemId: menuItem.id,
           quantity: 1,
           price: menuItem.price,

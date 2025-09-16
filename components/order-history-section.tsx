@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useRef } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
@@ -15,6 +15,10 @@ export function OrderHistorySection() {
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [dateFilter, setDateFilter] = useState("all")
+  const [exporting, setExporting] = useState(false)
+  const [exportMode, setExportMode] = useState<"day" | "month">("day")
+  const [exportDate, setExportDate] = useState("") // YYYY-MM-DD or YYYY-MM (depending)
+  const downloadLockRef = useRef(false)
 
   const completedOrders = mockOrders.filter((order) => order.status === "served" || order.status === "cancelled")
 
@@ -83,6 +87,126 @@ export function OrderHistorySection() {
       .join(", ")
   }
 
+  const buildCsvAndDownload = async (orders: Order[], fileNameSuffix: string) => {
+    const headers = [
+      "Order ID",
+      "Created At",
+      "Status",
+      "Table",
+      "Waiter",
+      "Total",
+      "Items",
+    ]
+    const rows = orders.map((o) => [
+      o.id,
+      new Date(o.createdAt).toISOString(),
+      o.status,
+      String(o.tableNumber),
+      getWaiterName(o.waiterId),
+      o.totalAmount.toFixed(2),
+      getOrderItems(o),
+    ])
+
+    const escapeCsv = (val: string) => {
+      const needsQuotes = /[",\n]/.test(val)
+      const escaped = val.replace(/"/g, '""')
+      return needsQuotes ? `"${escaped}"` : escaped
+    }
+
+    const csv = [headers, ...rows]
+      .map((row) => row.map((c) => escapeCsv(String(c))).join(","))
+      .join("\n")
+
+    // More robust download with fallback for different browsers
+    const fileName = (() => {
+      const ts = new Date().toISOString().replace(/[:T]/g, "-").split(".")[0]
+      return `order-history-${fileNameSuffix}-${ts}.csv`
+    })()
+
+    try {
+      // Attempt modern file picker so the user can choose a folder/file name
+      const anyWindow = window as any
+      if (typeof anyWindow?.showSaveFilePicker === "function") {
+        const handle = await anyWindow.showSaveFilePicker({
+          suggestedName: fileName,
+          types: [
+            {
+              description: "CSV File",
+              accept: { "text/csv": [".csv"] },
+            },
+          ],
+        })
+        const writable = await handle.createWritable()
+        await writable.write(new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8;" }))
+        await writable.close()
+        return
+      }
+
+      const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8;" })
+      // @ts-ignore legacy IE fallback
+      if (typeof window !== "undefined" && window.navigator && (window.navigator as any).msSaveOrOpenBlob) {
+        // @ts-ignore
+        ;(window.navigator as any).msSaveOrOpenBlob(blob, fileName)
+        return
+      }
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.setAttribute("download", fileName)
+      a.style.display = "none"
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch {
+      // Fallback to data URI
+      const dataUrl = "data:text/csv;charset=utf-8,\ufeff" + encodeURIComponent(csv)
+      const a = document.createElement("a")
+      a.href = dataUrl
+      a.setAttribute("download", fileName)
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+    }
+  }
+
+  const exportFilteredCsv = async () => {
+    setExporting(true)
+    try {
+      await buildCsvAndDownload(filteredOrders, "filtered")
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  const exportCsv = async () => {
+    if (downloadLockRef.current) return
+    downloadLockRef.current = true
+    if (!exportDate) return
+    setExporting(true)
+    try {
+      if (exportMode === "day") {
+        const day = new Date(exportDate)
+        const start = new Date(day.getFullYear(), day.getMonth(), day.getDate())
+        const end = new Date(start.getTime() + 24 * 60 * 60 * 1000)
+        const list = completedOrders.filter((o) => new Date(o.createdAt) >= start && new Date(o.createdAt) < end)
+        await buildCsvAndDownload(list, exportDate)
+      } else {
+        const [y, m] = exportDate.split("-").map((n) => Number.parseInt(n))
+        const start = new Date(y, m - 1, 1)
+        const end = new Date(y, m, 1)
+        const list = completedOrders.filter((o) => new Date(o.createdAt) >= start && new Date(o.createdAt) < end)
+        await buildCsvAndDownload(list, exportDate)
+      }
+    } finally {
+      setExporting(false)
+      // release the lock on next tick to avoid double-firing in some browsers
+      setTimeout(() => {
+        downloadLockRef.current = false
+      }, 0)
+    }
+  }
+
   return (
     <div className="space-y-6">
       <Card>
@@ -142,9 +266,43 @@ export function OrderHistorySection() {
 
       <Card>
         <CardHeader>
-          <CardTitle>
-            Order History ({filteredOrders.length} {filteredOrders.length === 1 ? "order" : "orders"})
-          </CardTitle>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <CardTitle>
+              Order History ({filteredOrders.length} {filteredOrders.length === 1 ? "order" : "orders"})
+            </CardTitle>
+            <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+              <select
+                value={exportMode}
+                onChange={(e) => {
+                  const mode = (e.target.value as "day" | "month")
+                  setExportMode(mode)
+                  setExportDate("")
+                }}
+                className="border rounded-md px-2 py-1 text-sm bg-transparent"
+              >
+                <option value="day">Day</option>
+                <option value="month">Month</option>
+              </select>
+              {exportMode === "day" ? (
+                <input
+                  type="date"
+                  value={exportDate}
+                  onChange={(e) => setExportDate(e.target.value)}
+                  className="border rounded-md px-2 py-1 text-sm bg-transparent"
+                />
+              ) : (
+                <input
+                  type="month"
+                  value={exportDate}
+                  onChange={(e) => setExportDate(e.target.value)}
+                  className="border rounded-md px-2 py-1 text-sm bg-transparent"
+                />
+              )}
+              <Button type="button" onClick={exportCsv} size="sm" disabled={!exportDate || exporting}>
+                Export CSV
+              </Button>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">

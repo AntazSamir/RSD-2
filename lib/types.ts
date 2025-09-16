@@ -80,4 +80,107 @@ export interface Staff {
   exitTime: string
   efficiency: number
   hoursWorked: number
+  // Enhanced member features
+  email: string
+  emergencyContact: string
+  emergencyPhone: string
+  department: "front-of-house" | "kitchen" | "management" | "cleaning" | "security"
+  position: string
+  managerId?: string
+  permissions: string[]
+  lastLogin?: Date
+  isActive: boolean
+  profileImage?: string
+  bio?: string
+  skills: string[]
+  certifications: string[]
+  performanceScore: number
+  attendanceRate: number
+  totalOrdersHandled: number
+  customerRating: number
+  trainingCompleted: string[]
+  nextReviewDate: Date
+  notes: string
+}
+
+export interface MemberRole {
+  id: string
+  name: string
+  description: string
+  permissions: string[]
+  level: number
+  color: string
+  isActive: boolean
+}
+
+export interface MemberShift {
+  id: string
+  memberId: string
+  date: Date
+  startTime: string
+  endTime: string
+  breakDuration: number
+  status: "scheduled" | "in-progress" | "completed" | "cancelled"
+  notes?: string
+  actualStartTime?: string
+  actualEndTime?: string
+  overtime?: number
+}
+
+export interface MemberPerformance {
+  id: string
+  memberId: string
+  period: "daily" | "weekly" | "monthly"
+  date: Date
+  ordersHandled: number
+  customerSatisfaction: number
+  efficiency: number
+  attendance: number
+  punctuality: number
+  teamwork: number
+  communication: number
+  overallScore: number
+  notes?: string
+}
+
+export interface MemberNotification {
+  id: string
+  memberId: string
+  title: string
+  message: string
+  type: "info" | "warning" | "success" | "error"
+  isRead: boolean
+  createdAt: Date
+  expiresAt?: Date
+  actionUrl?: string
+}
+
+export interface InventoryItem {
+  id: string
+  name: string
+  category: "protein" | "vegetables" | "dairy" | "grains" | "beverages" | "condiments"
+  currentStock: number
+  maxStock: number
+  unit: string
+  costPerUnit: number
+  totalValue: number
+  supplier: string
+  lastRestocked: Date
+  expiresAt: Date
+  lowStockThreshold: number
+}
+
+export interface Customer {
+  id: string
+  name: string
+  email: string
+  phone: string
+  totalVisits: number
+  totalSpent: number
+  lastVisit: Date
+  loyaltyPoints: number
+  preferences?: string[]
+  allergies?: string[]
+  notes?: string
+  createdAt: Date
 }

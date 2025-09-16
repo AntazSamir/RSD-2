@@ -33,11 +33,11 @@ export function EditOrderDialog({ order }: EditOrderDialogProps) {
     const totalTime = orderForm.orderItems.reduce((time, item) => {
       const menuItem = mockMenuItems.find((mi) => mi.id === item.menuItemId)
       const dishTime =
-        menuItem?.category === "appetizers"
+        menuItem?.category === "appetizer"
           ? 10
-          : menuItem?.category === "mains"
+          : menuItem?.category === "main"
             ? 25
-            : menuItem?.category === "desserts"
+            : menuItem?.category === "dessert"
               ? 15
               : 20
       return time + dishTime * item.quantity * 0.8
@@ -57,8 +57,8 @@ export function EditOrderDialog({ order }: EditOrderDialogProps) {
       waiterId: orderForm.selectedWaiter,
       items: orderForm.orderItems,
       totalAmount: orderForm.totalAmount,
-      estimatedTime: estimatedTime,
-      updatedAt: new Date().toISOString(),
+      estimatedReadyTime: new Date(Date.now() + estimatedTime * 60000),
+      updatedAt: new Date(), // Fix: Use Date object instead of string
     }
 
     updateOrder(updatedOrder)
@@ -78,7 +78,7 @@ export function EditOrderDialog({ order }: EditOrderDialogProps) {
           <Edit className="h-4 w-4" />
         </Button>
       </DialogTrigger>
-      <DialogContent className="w-screen min-w-full max-w-none max-h-[95vh] overflow-y-auto m-0">
+      <DialogContent className="max-w-6xl max-h-[95vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit Order #{order.id}</DialogTitle>
         </DialogHeader>

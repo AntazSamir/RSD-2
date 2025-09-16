@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useMemo, useCallback, lazy, Suspense, useEffect } from "react"
+import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -18,28 +19,23 @@ import {
   Grid3X3,
   UserCheck,
   Package,
+  User as UserIcon,
+  LogOut,
 } from "lucide-react"
-import { mockOrders, mockTables, mockStaff } from "@/lib/mock-data"
+import { mockOrders, mockTables, mockStaff, mockBranchStaff } from "@/lib/mock-data"
 import { NewOrderDialog } from "@/components/new-order-dialog"
 import { EditStaffTimeDialog } from "@/components/edit-staff-time-dialog"
 import { OrderDetailsDialog } from "@/components/order-details-dialog"
 import { cn } from "@/lib/utils"
+import { ErrorBoundary } from "@/components/error-boundary"
 
-const OrdersTable = lazy(() => import("@/components/orders-table").then((module) => ({ default: module.OrdersTable })))
-const MenuTable = lazy(() => import("@/components/menu-table").then((module) => ({ default: module.MenuTable })))
-const TablesGrid = lazy(() => import("@/components/tables-grid").then((module) => ({ default: module.TablesGrid })))
-const AnalyticsDashboard = lazy(() =>
-  import("@/components/analytics-dashboard").then((module) => ({ default: module.AnalyticsDashboard })),
-)
-const BranchReports = lazy(() =>
-  import("@/components/branch-reports").then((module) => ({ default: module.BranchReports })),
-)
-const CustomerManagement = lazy(() =>
-  import("@/components/customer-management").then((module) => ({ default: module.CustomerManagement })),
-)
-const InventoryManagement = lazy(() =>
-  import("@/components/inventory-management").then((module) => ({ default: module.InventoryManagement })),
-)
+const OrdersTable = lazy(() => import("@/components/orders-table").then(module => ({ default: module.OrdersTable })))
+const MenuTable = lazy(() => import("@/components/menu-table").then(module => ({ default: module.MenuTable })))
+const TablesGrid = lazy(() => import("@/components/tables-grid").then(module => ({ default: module.TablesGrid })))
+const AnalyticsDashboard = lazy(() => import("@/components/analytics-dashboard").then(module => ({ default: module.AnalyticsDashboard })))
+const BranchReports = lazy(() => import("@/components/branch-reports").then(module => ({ default: module.BranchReports })))
+const CustomerManagement = lazy(() => import("@/components/customer-management").then(module => ({ default: module.default })))
+const InventoryManagement = lazy(() => import("@/components/inventory-management").then(module => ({ default: module.InventoryManagement })))
 
 const TabLoadingSpinner = () => (
   <div className="flex items-center justify-center py-12">
@@ -206,7 +202,6 @@ export default function RestaurantDashboard() {
     { id: "overview", label: "Overview", icon: ClipboardList },
     { id: "orders", label: "Orders", icon: UtensilsCrossed },
     { id: "menu", label: "Menu", icon: ChefHat },
-    { id: "tables", label: "Tables", icon: Grid3X3 },
   ]
 
   return (
@@ -352,7 +347,42 @@ export default function RestaurantDashboard() {
               />
             </div>
 
-            <div className="flex items-center">
+            <div className="flex items-center gap-3">
+              <div className="hidden sm:flex flex-col items-end">
+                <span className="text-sm font-medium">
+                  {mockBranchStaff[0]?.name || "Manager"}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {mockBranchStaff[0]?.role || "Administrator"}
+                </span>
+              </div>
+              <div className="relative group">
+                <button className="flex items-center gap-2 rounded-full p-1 hover:bg-accent transition-colors">
+                  <div className="bg-primary/10 rounded-full p-2">
+                    <UserIcon className="h-4 w-4 text-primary" />
+                  </div>
+                </button>
+                
+                {/* Dropdown menu */}
+                <div className="absolute right-0 mt-2 w-48 bg-card border rounded-lg shadow-lg py-1 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                  <Link href="/profile" className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-accent w-full">
+                    <UserIcon className="h-4 w-4" />
+                    <span>Profile</span>
+                  </Link>
+                  <button 
+                    onClick={() => {
+                      // In a real app, this would handle logout logic
+                      console.log("Logout clicked");
+                      // Redirect to sign-in page
+                      window.location.href = "/sign-in";
+                    }}
+                    className="flex items-center gap-2 px-4 py-2 text-sm hover:bg-accent w-full text-left"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    <span>Logout</span>
+                  </button>
+                </div>
+              </div>
               <ThemeToggle />
             </div>
           </div>
@@ -360,265 +390,267 @@ export default function RestaurantDashboard() {
 
         <main className="flex-1 p-3 sm:p-6">
           {activeTab === "overview" && (
-            <div className="space-y-4 sm:space-y-6">
-              <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Active Orders</CardTitle>
-                    <ClipboardList className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">{dashboardStats.activeOrders}</div>
-                    <p className="text-xs text-muted-foreground">+2 from last hour</p>
-                  </CardContent>
-                </Card>
+            <ErrorBoundary>
+              <div className="space-y-4 sm:space-y-6">
+                <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+                  <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium">Active Orders</CardTitle>
+                      <ClipboardList className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">{dashboardStats.activeOrders}</div>
+                      <p className="text-xs text-muted-foreground">+2 from last hour</p>
+                    </CardContent>
+                  </Card>
 
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Occupied Tables</CardTitle>
-                    <Users className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">
-                      {dashboardStats.occupiedTables}/{mockTables.length}
-                    </div>
-                    <p className="text-xs text-muted-foreground">{dashboardStats.occupancyRate}% capacity</p>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Today's Revenue</CardTitle>
-                    <DollarSign className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">${dashboardStats.todayRevenue.toFixed(2)}</div>
-                    <p className="text-xs text-muted-foreground">+12% from yesterday</p>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base sm:text-lg">Avg Order Time</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">{dashboardStats.avgOrderTime}m</div>
-                    <p className="text-xs text-muted-foreground">-3m from last week</p>
-                  </CardContent>
-                </Card>
-              </div>
-
-              <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-2">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base sm:text-lg">Recent Orders</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3 sm:space-y-4">
-                    {recentOrders.map((order) => (
-                      <div key={order.id} className="flex items-center justify-between p-3 border rounded-lg">
-                        <div className="min-w-0 flex-1">
-                          <p className="font-medium text-sm sm:text-base">Table {order.tableNumber}</p>
-                          <p className="text-xs sm:text-sm text-muted-foreground truncate">
-                            {order.items.length} items • ${order.totalAmount.toFixed(2)}
-                          </p>
-                        </div>
-                        <Badge
-                          variant={order.status === "preparing" ? "default" : "secondary"}
-                          className="capitalize text-xs ml-2"
-                        >
-                          {order.status}
-                        </Badge>
+                  <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium">Occupied Tables</CardTitle>
+                      <Users className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">
+                        {dashboardStats.occupiedTables}/{mockTables.length}
                       </div>
-                    ))}
-                  </CardContent>
-                </Card>
+                      <p className="text-xs text-muted-foreground">{dashboardStats.occupancyRate}% capacity</p>
+                    </CardContent>
+                  </Card>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base sm:text-lg">Table Status</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
-                      {mockTables.map((table) => {
-                        const currentOrder = getTableOrder(table.number)
-                        const isOccupied = table.status === "occupied" && currentOrder
+                  <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-sm font-medium">Today&apos;s Revenue</CardTitle>
+                      <DollarSign className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">${dashboardStats.todayRevenue.toFixed(2)}</div>
+                      <p className="text-xs text-muted-foreground">+12% from yesterday</p>
+                    </CardContent>
+                  </Card>
 
-                        const tableElement = (
-                          <div
-                            key={table.id}
-                            className={`p-3 sm:p-4 border rounded-lg text-center cursor-pointer hover:shadow-md transition-shadow min-h-[80px] sm:min-h-[auto] flex flex-col justify-center ${
-                              table.status === "occupied"
-                                ? "bg-red-100/80 dark:bg-red-950/40 border-red-600 dark:border-red-700/50 hover:bg-red-200/80 dark:hover:bg-red-900/50 text-red-900 dark:text-red-100"
-                                : table.status === "available" || table.status === "cleaning"
-                                  ? "bg-green-100/80 dark:bg-green-950/40 border-green-600 dark:border-green-700/50 hover:bg-green-200/80 dark:hover:bg-green-900/50 text-green-900 dark:text-green-100"
-                                  : table.status === "reserved"
-                                    ? "bg-yellow-100/80 dark:bg-yellow-950/40 border-yellow-600 dark:border-yellow-700/50 hover:bg-yellow-200/80 dark:hover:bg-yellow-900/50 text-yellow-900 dark:text-yellow-100"
-                                    : "bg-gray-100 dark:bg-gray-900/30 border-gray-300 dark:border-gray-700/50 hover:bg-gray-200 dark:hover:bg-gray-800/40 text-gray-800 dark:text-gray-300"
-                            }`}
-                            onClick={() => !isOccupied && handleAssignTable(table.number.toString())}
-                          >
-                            <p className="font-medium text-sm sm:text-base">Table {table.number}</p>
-                            <p
-                              className={`text-xs ${
-                                table.status === "occupied"
-                                  ? "text-red-800 dark:text-red-200"
-                                  : table.status === "available" || table.status === "cleaning"
-                                    ? "text-green-800 dark:text-green-200"
-                                    : table.status === "reserved"
-                                      ? "text-yellow-800 dark:text-yellow-200"
-                                      : "text-gray-600 dark:text-gray-400"
-                              }`}
-                            >
-                              Seats {table.capacity}
-                            </p>
-                            <p
-                              className={`text-xs capitalize ${
-                                table.status === "occupied"
-                                  ? "text-red-800 dark:text-red-200"
-                                  : table.status === "available" || table.status === "cleaning"
-                                    ? "text-green-800 dark:text-green-200"
-                                    : table.status === "reserved"
-                                      ? "text-yellow-800 dark:text-yellow-200"
-                                      : "text-gray-600 dark:text-gray-400"
-                              }`}
-                            >
-                              {table.status === "cleaning" ? "available" : table.status}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base sm:text-lg">Avg Order Time</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">{dashboardStats.avgOrderTime}m</div>
+                      <p className="text-xs text-muted-foreground">-3m from last week</p>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-2">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base sm:text-lg">Recent Orders</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3 sm:space-y-4">
+                      {recentOrders.map((order) => (
+                        <div key={order.id} className="flex items-center justify-between p-3 border rounded-lg">
+                          <div className="min-w-0 flex-1">
+                            <p className="font-medium text-sm sm:text-base">Table {order.tableNumber}</p>
+                            <p className="text-xs sm:text-sm text-muted-foreground truncate">
+                              {order.items.length} items • ${order.totalAmount.toFixed(2)}
                             </p>
                           </div>
-                        )
+                          <Badge
+                            variant={order.status === "preparing" ? "default" : "secondary"}
+                            className="capitalize text-xs ml-2"
+                          >
+                            {order.status}
+                          </Badge>
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
 
-                        return isOccupied ? (
-                          <OrderDetailsDialog key={table.id} order={currentOrder} editable={true}>
-                            {tableElement}
-                          </OrderDetailsDialog>
-                        ) : (
-                          tableElement
-                        )
-                      })}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base sm:text-lg">Table Status</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
+                        {mockTables.map((table) => {
+                          const currentOrder = getTableOrder(table.number)
+                          const isOccupied = table.status === "occupied" && currentOrder
+
+                          const tableElement = (
+                            <div
+                              key={table.id}
+                              className={`p-3 sm:p-4 border rounded-lg text-center cursor-pointer hover:shadow-md transition-shadow min-h-[80px] sm:min-h-[auto] flex flex-col justify-center ${
+                                table.status === "occupied"
+                                  ? "bg-red-100/80 dark:bg-red-950/40 border-red-600 dark:border-red-700/50 hover:bg-red-200/80 dark:hover:bg-red-900/50 text-red-900 dark:text-red-100"
+                                  : table.status === "available" || table.status === "cleaning"
+                                    ? "bg-green-100/80 dark:bg-green-950/40 border-green-600 dark:border-green-700/50 hover:bg-green-200/80 dark:hover:bg-green-900/50 text-green-900 dark:text-green-100"
+                                    : table.status === "reserved"
+                                      ? "bg-yellow-100/80 dark:bg-yellow-950/40 border-yellow-600 dark:border-yellow-700/50 hover:bg-yellow-200/80 dark:hover:bg-yellow-900/50 text-yellow-900 dark:text-yellow-100"
+                                      : "bg-gray-100 dark:bg-gray-900/30 border-gray-300 dark:border-gray-700/50 hover:bg-gray-200 dark:hover:bg-gray-800/40 text-gray-800 dark:text-gray-300"
+                              }`}
+                              onClick={() => !isOccupied && handleAssignTable(table.number.toString())}
+                            >
+                              <p className="font-medium text-sm sm:text-base">Table {table.number}</p>
+                              <p
+                                className={`text-xs ${
+                                  table.status === "occupied"
+                                    ? "text-red-800 dark:text-red-200"
+                                    : table.status === "available" || table.status === "cleaning"
+                                      ? "text-green-800 dark:text-green-200"
+                                      : table.status === "reserved"
+                                        ? "text-yellow-800 dark:text-yellow-200"
+                                        : "text-gray-600 dark:text-gray-400"
+                                }`}
+                              >
+                                Seats {table.capacity}
+                              </p>
+                              <p
+                                className={`text-xs capitalize ${
+                                  table.status === "occupied"
+                                    ? "text-red-800 dark:text-red-200"
+                                    : table.status === "available" || table.status === "cleaning"
+                                      ? "text-green-800 dark:text-green-200"
+                                      : table.status === "reserved"
+                                        ? "text-yellow-800 dark:text-yellow-200"
+                                        : "text-gray-600 dark:text-gray-400"
+                                }`}
+                              >
+                                {table.status === "cleaning" ? "available" : table.status}
+                              </p>
+                            </div>
+                          )
+
+                          return isOccupied ? (
+                            <OrderDetailsDialog key={table.id} order={currentOrder} editable={true}>
+                              {tableElement}
+                            </OrderDetailsDialog>
+                          ) : (
+                            tableElement
+                          )
+                        })}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <CardTitle className="text-base sm:text-lg">Staff Status</CardTitle>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="text-xs">
+                        Auto-reset: {autoResetEnabled ? "ON" : "OFF"}
+                      </Badge>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => setActiveTab("analytics")}
+                        className="text-xs px-2 py-1 h-auto"
+                      >
+                        <BarChart3 className="h-3 w-3 mr-1" />
+                        Staff Report
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={manualReset}
+                        className="text-xs px-2 py-1 h-auto bg-transparent"
+                      >
+                        Reset All
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-2">
+                      <div>
+                        <h3 className="font-medium text-sm text-green-800 dark:text-green-300 mb-3">Currently Working</h3>
+                        <div className="space-y-2">
+                          {mockStaff
+                            .filter((staff) => staffStatus[staff.id] === "working")
+                            .map((staff) => (
+                              <div
+                                key={staff.id}
+                                className="flex items-center gap-3 p-2 bg-green-100/80 dark:bg-green-950/40 border border-green-600 dark:border-green-700/50 rounded-lg"
+                              >
+                                <div className="w-8 h-8 bg-green-700 dark:bg-green-800/80 text-white rounded-full flex items-center justify-center text-xs font-medium">
+                                  {staff.avatar}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-medium text-sm text-green-900 dark:text-green-200">{staff.name}</p>
+                                  <p className="text-xs text-green-800 dark:text-green-300/80">{staff.role}</p>
+                                </div>
+                                <EditStaffTimeDialog
+                                  staff={{
+                                    ...staff,
+                                    shiftStart: staffTimes[staff.id]?.shiftStart || staff.shiftStart,
+                                    shiftEnd: staffTimes[staff.id]?.shiftEnd || staff.shiftEnd,
+                                  }}
+                                  onTimeUpdate={updateStaffTime}
+                                >
+                                  <button className="text-xs text-muted-foreground hover:text-primary cursor-pointer transition-colors">
+                                    {staffTimes[staff.id]?.shiftStart || staff.shiftStart} -{" "}
+                                    {staffTimes[staff.id]?.shiftEnd || staff.shiftEnd}
+                                  </button>
+                                </EditStaffTimeDialog>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => toggleStaffStatus(staff.id)}
+                                  className="text-xs px-2 py-1 h-auto"
+                                >
+                                  Mark Absent
+                                </Button>
+                              </div>
+                            ))}
+                        </div>
+                      </div>
+
+                      <div>
+                        <h3 className="font-medium text-sm text-yellow-800 dark:text-yellow-300 mb-3">
+                          Currently Absent
+                        </h3>
+                        <div className="space-y-2">
+                          {mockStaff
+                            .filter((staff) => staffStatus[staff.id] === "absent")
+                            .map((staff) => (
+                              <div
+                                key={staff.id}
+                                className="flex items-center gap-3 p-2 bg-yellow-100/80 dark:bg-yellow-950/40 border border-yellow-600 dark:border-yellow-700/50 rounded-lg"
+                              >
+                                <div className="w-8 h-8 bg-yellow-700 dark:bg-yellow-800/80 text-white rounded-full flex items-center justify-center text-xs font-medium">
+                                  {staff.avatar}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-medium text-sm text-yellow-900 dark:text-yellow-100">{staff.name}</p>
+                                  <p className="text-xs text-yellow-800 dark:text-yellow-300/80">{staff.role}</p>
+                                </div>
+                                <EditStaffTimeDialog
+                                  staff={{
+                                    ...staff,
+                                    shiftStart: staffTimes[staff.id]?.shiftStart || staff.shiftStart,
+                                    shiftEnd: staffTimes[staff.id]?.shiftEnd || staff.shiftEnd,
+                                  }}
+                                  onTimeUpdate={updateStaffTime}
+                                >
+                                  <button className="text-xs text-muted-foreground hover:text-primary cursor-pointer transition-colors">
+                                    {staffTimes[staff.id]?.shiftStart || staff.shiftStart} -{" "}
+                                    {staffTimes[staff.id]?.shiftEnd || staff.shiftEnd}
+                                  </button>
+                                </EditStaffTimeDialog>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => toggleStaffStatus(staff.id)}
+                                  className="text-xs px-2 py-1 h-auto"
+                                >
+                                  Mark Present
+                                </Button>
+                              </div>
+                            ))}
+                        </div>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
               </div>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
-                  <CardTitle className="text-base sm:text-lg">Staff Status</CardTitle>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="text-xs">
-                      Auto-reset: {autoResetEnabled ? "ON" : "OFF"}
-                    </Badge>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={() => setActiveTab("analytics")}
-                      className="text-xs px-2 py-1 h-auto"
-                    >
-                      <BarChart3 className="h-3 w-3 mr-1" />
-                      Staff Report
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={manualReset}
-                      className="text-xs px-2 py-1 h-auto bg-transparent"
-                    >
-                      Reset All
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-2">
-                    <div>
-                      <h3 className="font-medium text-sm text-green-800 dark:text-green-300 mb-3">Currently Working</h3>
-                      <div className="space-y-2">
-                        {mockStaff
-                          .filter((staff) => staffStatus[staff.id] === "working")
-                          .map((staff) => (
-                            <div
-                              key={staff.id}
-                              className="flex items-center gap-3 p-2 bg-green-100/80 dark:bg-green-950/40 border border-green-600 dark:border-green-700/50 rounded-lg"
-                            >
-                              <div className="w-8 h-8 bg-green-700 dark:bg-green-800/80 text-white rounded-full flex items-center justify-center text-xs font-medium">
-                                {staff.avatar}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="font-medium text-sm text-green-900 dark:text-green-200">{staff.name}</p>
-                                <p className="text-xs text-green-800 dark:text-green-300/80">{staff.role}</p>
-                              </div>
-                              <EditStaffTimeDialog
-                                staff={{
-                                  ...staff,
-                                  shiftStart: staffTimes[staff.id]?.shiftStart || staff.shiftStart,
-                                  shiftEnd: staffTimes[staff.id]?.shiftEnd || staff.shiftEnd,
-                                }}
-                                onTimeUpdate={updateStaffTime}
-                              >
-                                <button className="text-xs text-muted-foreground hover:text-primary cursor-pointer transition-colors">
-                                  {staffTimes[staff.id]?.shiftStart || staff.shiftStart} -{" "}
-                                  {staffTimes[staff.id]?.shiftEnd || staff.shiftEnd}
-                                </button>
-                              </EditStaffTimeDialog>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => toggleStaffStatus(staff.id)}
-                                className="text-xs px-2 py-1 h-auto"
-                              >
-                                Mark Absent
-                              </Button>
-                            </div>
-                          ))}
-                      </div>
-                    </div>
-
-                    <div>
-                      <h3 className="font-medium text-sm text-yellow-800 dark:text-yellow-300 mb-3">
-                        Currently Absent
-                      </h3>
-                      <div className="space-y-2">
-                        {mockStaff
-                          .filter((staff) => staffStatus[staff.id] === "absent")
-                          .map((staff) => (
-                            <div
-                              key={staff.id}
-                              className="flex items-center gap-3 p-2 bg-yellow-100/80 dark:bg-yellow-950/40 border border-yellow-600 dark:border-yellow-700/50 rounded-lg"
-                            >
-                              <div className="w-8 h-8 bg-yellow-700 dark:bg-yellow-800/80 text-white rounded-full flex items-center justify-center text-xs font-medium">
-                                {staff.avatar}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="font-medium text-sm text-yellow-900 dark:text-yellow-100">{staff.name}</p>
-                                <p className="text-xs text-yellow-800 dark:text-yellow-300/80">{staff.role}</p>
-                              </div>
-                              <EditStaffTimeDialog
-                                staff={{
-                                  ...staff,
-                                  shiftStart: staffTimes[staff.id]?.shiftStart || staff.shiftStart,
-                                  shiftEnd: staffTimes[staff.id]?.shiftEnd || staff.shiftEnd,
-                                }}
-                                onTimeUpdate={updateStaffTime}
-                              >
-                                <button className="text-xs text-muted-foreground hover:text-primary cursor-pointer transition-colors">
-                                  {staffTimes[staff.id]?.shiftStart || staff.shiftStart} -{" "}
-                                  {staffTimes[staff.id]?.shiftEnd || staff.shiftEnd}
-                                </button>
-                              </EditStaffTimeDialog>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => toggleStaffStatus(staff.id)}
-                                className="text-xs px-2 py-1 h-auto"
-                              >
-                                Mark Present
-                              </Button>
-                            </div>
-                          ))}
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+            </ErrorBoundary>
           )}
 
           {activeTab === "orders" && (

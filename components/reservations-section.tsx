@@ -4,7 +4,12 @@ import { useState } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Calendar, Clock, Users, Phone, MessageSquare, CheckCircle, XCircle, Utensils } from "lucide-react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Calendar, Clock, Users, Phone, MessageSquare, CheckCircle, XCircle, Utensils, Edit } from "lucide-react"
 import { mockMenuItems } from "@/lib/mock-data"
 
 // Mock reservation data
@@ -76,6 +81,8 @@ const mockReservations = [
 
 export function ReservationsSection() {
   const [reservations, setReservations] = useState(mockReservations)
+  const [editOpen, setEditOpen] = useState(false)
+  const [editingReservation, setEditingReservation] = useState<typeof mockReservations[number] | null>(null)
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -98,6 +105,19 @@ export function ReservationsSection() {
         reservation.id === reservationId ? { ...reservation, status: newStatus as any } : reservation,
       ),
     )
+  }
+
+  const openEdit = (reservationId: string) => {
+    const res = reservations.find((r) => r.id === reservationId) || null
+    setEditingReservation(res ? { ...res } : null)
+    setEditOpen(!!res)
+  }
+
+  const saveEdit = () => {
+    if (!editingReservation) return
+    setReservations((prev) => prev.map((r) => (r.id === editingReservation.id ? { ...editingReservation } : r)))
+    setEditOpen(false)
+    setEditingReservation(null)
   }
 
   const calculatePreOrderTotal = (preOrderedItems: any[]) => {
@@ -152,12 +172,12 @@ export function ReservationsSection() {
       </div>
 
       <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-2">
-        {/* Today's Reservations */}
+        {/* Today&apos;s Reservations */}
         <Card>
           <CardHeader>
             <CardTitle className="text-base sm:text-lg flex items-center gap-2">
               <Clock className="h-5 w-5" />
-              Today's Reservations ({todayReservations.length})
+              Today&apos;s Reservations ({todayReservations.length})
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -201,8 +221,8 @@ export function ReservationsSection() {
                     </div>
                   </div>
 
-                  {reservation.status === "pending" && (
-                    <div className="flex gap-2 pt-2">
+                  <div className="flex gap-2 pt-2">
+                    {reservation.status === "pending" && (
                       <Button
                         size="sm"
                         variant="outline"
@@ -212,6 +232,11 @@ export function ReservationsSection() {
                         <CheckCircle className="h-3 w-3 mr-1" />
                         Confirm
                       </Button>
+                    )}
+                    <Button size="sm" variant="outline" onClick={() => openEdit(reservation.id)} className="text-xs h-7">
+                      <Edit className="h-3 w-3 mr-1" /> Edit
+                    </Button>
+                    {reservation.status !== "cancelled" && (
                       <Button
                         size="sm"
                         variant="outline"
@@ -221,8 +246,8 @@ export function ReservationsSection() {
                         <XCircle className="h-3 w-3 mr-1" />
                         Cancel
                       </Button>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               ))
             )}
@@ -282,8 +307,8 @@ export function ReservationsSection() {
                     </div>
                   </div>
 
-                  {reservation.status === "pending" && (
-                    <div className="flex gap-2 pt-2">
+                  <div className="flex gap-2 pt-2">
+                    {reservation.status === "pending" && (
                       <Button
                         size="sm"
                         variant="outline"
@@ -293,6 +318,11 @@ export function ReservationsSection() {
                         <CheckCircle className="h-3 w-3 mr-1" />
                         Confirm
                       </Button>
+                    )}
+                    <Button size="sm" variant="outline" onClick={() => openEdit(reservation.id)} className="text-xs h-7">
+                      <Edit className="h-3 w-3 mr-1" /> Edit
+                    </Button>
+                    {reservation.status !== "cancelled" && (
                       <Button
                         size="sm"
                         variant="outline"
@@ -302,14 +332,106 @@ export function ReservationsSection() {
                         <XCircle className="h-3 w-3 mr-1" />
                         Cancel
                       </Button>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               ))
             )}
           </CardContent>
         </Card>
       </div>
+
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Edit Reservation {editingReservation ? `- ${editingReservation.id}` : ""}</DialogTitle>
+          </DialogHeader>
+          {editingReservation && (
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs">Customer Name</Label>
+                  <Input
+                    value={editingReservation.customerName}
+                    onChange={(e) => setEditingReservation({ ...(editingReservation as any), customerName: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Phone</Label>
+                  <Input
+                    value={editingReservation.phone}
+                    onChange={(e) => setEditingReservation({ ...(editingReservation as any), phone: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <Label className="text-xs">Party Size</Label>
+                  <Input
+                    type="number"
+                    value={editingReservation.partySize}
+                    onChange={(e) => setEditingReservation({ ...(editingReservation as any), partySize: Number(e.target.value) })}
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Table</Label>
+                  <Input
+                    type="number"
+                    value={editingReservation.tableNumber}
+                    onChange={(e) => setEditingReservation({ ...(editingReservation as any), tableNumber: Number(e.target.value) })}
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Status</Label>
+                  <Select
+                    value={editingReservation.status}
+                    onValueChange={(v) => setEditingReservation({ ...(editingReservation as any), status: v })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="confirmed">Confirmed</SelectItem>
+                      <SelectItem value="cancelled">Cancelled</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs">Date</Label>
+                  <Input
+                    type="date"
+                    value={editingReservation.date}
+                    onChange={(e) => setEditingReservation({ ...(editingReservation as any), date: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Time</Label>
+                  <Input
+                    type="time"
+                    value={editingReservation.time}
+                    onChange={(e) => setEditingReservation({ ...(editingReservation as any), time: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div>
+                <Label className="text-xs">Special Requests</Label>
+                <Textarea
+                  rows={3}
+                  value={editingReservation.specialRequests}
+                  onChange={(e) => setEditingReservation({ ...(editingReservation as any), specialRequests: e.target.value })}
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-1">
+                <Button variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>
+                <Button onClick={saveEdit}>Save</Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

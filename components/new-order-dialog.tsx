@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { Plus, Minus, ShoppingCart, Search, CheckCircle, Calendar, Clock, User, Phone } from "lucide-react"
-import { mockMenuItems, mockTables, mockUsers, addOrder, getNextOrderId } from "@/lib/mock-data"
+import { mockMenuItems, mockTables, mockUsers, mockOrders, addOrder, getNextOrderId, type Customer } from "@/lib/mock-data"
 import { useOrderForm } from "@/hooks/use-order-form"
 import { useMenuFilters } from "@/hooks/use-menu-filters"
 
@@ -19,18 +19,23 @@ interface NewOrderDialogProps {
   open?: boolean
   onOpenChange?: (open: boolean) => void
   preSelectedTable?: string
+  preSelectedCustomer?: Customer
   onTableAssigned?: () => void
   forceReservationMode?: boolean
   children?: React.ReactNode
+  // new: open in edit mode for an existing order
+  editOrderId?: string
 }
 
 export function NewOrderDialog({
   open: controlledOpen,
   onOpenChange: controlledOnOpenChange,
   preSelectedTable = "",
+  preSelectedCustomer,
   onTableAssigned,
   forceReservationMode = false,
   children,
+  editOrderId,
 }: NewOrderDialogProps = {}) {
   const [internalOpen, setInternalOpen] = useState(false)
   const open = controlledOpen !== undefined ? controlledOpen : internalOpen
@@ -52,9 +57,34 @@ export function NewOrderDialog({
     initialTable: preSelectedTable,
   })
 
+  // If editing, preload order data
+  useEffect(() => {
+    if (!editOrderId) return
+    const order = mockOrders.find((o) => o.id === editOrderId)
+    if (!order) return
+    // Always sync selected values when dialog opens for edit
+    orderForm.setSelectedTable(order.tableNumber.toString())
+    orderForm.setSelectedWaiter(order.waiterId)
+    if (orderForm.orderItems.length === 0) {
+      order.items.forEach((it) => {
+        const menuItem = mockMenuItems.find((mi) => mi.id === it.menuItemId)
+        if (menuItem) {
+          for (let i = 0; i < it.quantity; i++) {
+            orderForm.addToOrder(menuItem)
+          }
+        }
+      })
+    }
+  }, [editOrderId, open])
+
   const menuFilters = useMenuFilters(mockMenuItems)
 
-  const availableTables = mockTables.filter((table) => table.status === "available")
+  // When editing, include the current table even if it's not marked available
+  const currentEditingOrder = editOrderId ? mockOrders.find((o) => o.id === editOrderId) : undefined
+  const availableTablesBase = mockTables.filter((table) => table.status === "available")
+  const availableTables = currentEditingOrder
+    ? Array.from(new Map([...availableTablesBase, ...mockTables.filter((t) => t.number === currentEditingOrder.tableNumber)].map((t) => [t.number, t])).values())
+    : availableTablesBase
   const waiters = mockUsers.filter((user) => user.role === "waiter")
 
   const handlePlaceOrder = async () => {
@@ -113,8 +143,8 @@ export function NewOrderDialog({
 
       orderForm.resetForm()
       setReservationData({
-        customerName: "",
-        phoneNumber: "",
+        customerName: preSelectedCustomer?.name || "",
+        phoneNumber: preSelectedCustomer?.phone || "",
         date: "",
         time: "",
         partySize: "",
@@ -153,8 +183,8 @@ export function NewOrderDialog({
   }
 
   const [reservationData, setReservationData] = useState({
-    customerName: "",
-    phoneNumber: "",
+    customerName: preSelectedCustomer?.name || "",
+    phoneNumber: preSelectedCustomer?.phone || "",
     date: "",
     time: "",
     partySize: "",
@@ -180,38 +210,13 @@ export function NewOrderDialog({
         <DialogContent className="w-screen h-screen sm:w-screen sm:min-w-full sm:max-w-none sm:max-h-[95vh] overflow-hidden m-0 p-3 sm:p-6">
           <DialogHeader className="pb-2 sm:pb-4">
             <DialogTitle className="text-base sm:text-lg">
-              {isReservation ? "Make Reservation" : "Create New Order"}
+              {isReservation ? "Make Reservation" : editOrderId ? "Edit Order" : "Create New Order"}
             </DialogTitle>
           </DialogHeader>
 
           <div className="flex flex-col lg:flex-row gap-4 sm:gap-6 h-[calc(100vh-80px)] sm:h-[calc(90vh-120px)]">
             <div className="w-full lg:w-80 flex-shrink-0 space-y-3 sm:space-y-4 overflow-y-auto">
-              <Card>
-                <CardHeader className="pb-3 sm:pb-4">
-                  <CardTitle className="text-base sm:text-lg">Order Type</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex gap-2">
-                    <Button
-                      variant={!isReservation ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setIsReservation(false)}
-                      className="flex-1"
-                      disabled={forceReservationMode}
-                    >
-                      Dine In
-                    </Button>
-                    <Button
-                      variant={isReservation ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setIsReservation(true)}
-                      className="flex-1"
-                    >
-                      Reservation
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+              {/* Order Type selector removed */}
 
               {isReservation ? (
                 <Card>

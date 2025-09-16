@@ -7,11 +7,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
-import { Clock, Trash2, MoreHorizontal, Calendar } from "lucide-react"
-import { mockOrders, mockMenuItems, mockUsers, cancelOrder } from "@/lib/mock-data"
+import { Clock, Trash2, MoreHorizontal, Calendar, Undo2 } from "lucide-react"
+import { mockOrders, mockMenuItems, mockUsers } from "@/lib/mock-data"
 import type { Order } from "@/lib/types"
 import { NewOrderForm } from "./new-order-form"
-import { EditOrderDialog } from "./edit-order-dialog"
+import { NewOrderDialog } from "./new-order-dialog"
 import { OrderDetailsDialog } from "./order-details-dialog"
 import { OrderHistorySection } from "./order-history-section"
 import { ReservationsSection } from "./reservations-section"
@@ -42,23 +42,7 @@ export function OrdersTable() {
     }
   }
 
-  const handleCancelOrder = async (orderId: string) => {
-    if (confirm("Are you sure you want to cancel this order?")) {
-      setCancellingOrders((prev) => new Set(prev).add(orderId))
-
-      try {
-        await new Promise((resolve) => setTimeout(resolve, 1000))
-        cancelOrder(orderId)
-        refreshOrders()
-      } finally {
-        setCancellingOrders((prev) => {
-          const newSet = new Set(prev)
-          newSet.delete(orderId)
-          return newSet
-        })
-      }
-    }
-  }
+  // Cancel action is handled inside the order details dialog; no inline cancel on cards
 
   const getStatusColor = (status: Order["status"]) => {
     switch (status) {
@@ -79,6 +63,27 @@ export function OrdersTable() {
     }
   }
 
+  const statusSteps: Order["status"][] = ["pending", "confirmed", "preparing", "ready", "served"]
+
+  // The screenshot shows Delivery/Takeaway/Dine-in; mock a service type from id
+  const getServiceType = (order: Order) => {
+    const mod = Number.parseInt(order.id) % 3
+    if (mod === 0) return "Delivery"
+    if (mod === 1) return "Takeaway"
+    return "Dine-in"
+  }
+
+  const getServiceBadgeClass = (service: string) => {
+    switch (service) {
+      case "Delivery":
+        return "bg-sky-100 text-sky-800 border-sky-200"
+      case "Takeaway":
+        return "bg-purple-100 text-purple-800 border-purple-200"
+      default:
+        return "bg-emerald-100 text-emerald-800 border-emerald-200"
+    }
+  }
+
   const getWaiterName = (waiterId: string) => {
     const waiter = mockUsers.find((user) => user.id === waiterId)
     return waiter?.name || "Unknown"
@@ -91,6 +96,25 @@ export function OrdersTable() {
         return `${item.quantity}x ${menuItem?.name || "Unknown Item"}`
       })
       .join(", ")
+  }
+
+  const handleRevert = async (orderId: string) => {
+    setCancellingOrders((prev) => new Set(prev).add(orderId))
+    try {
+      await new Promise((r) => setTimeout(r, 500))
+      const original = mockOrders.find((o) => o.id === orderId)
+      if (original) {
+        original.status = "pending"
+        original.updatedAt = new Date()
+      }
+      refreshOrders()
+    } finally {
+      setCancellingOrders((prev) => {
+        const n = new Set(prev)
+        n.delete(orderId)
+        return n
+      })
+    }
   }
 
   return (
@@ -166,7 +190,7 @@ export function OrdersTable() {
               </Select>
             </div>
           </CardHeader>
-          <CardContent className="p-0 sm:p-6">
+          <CardContent className="p-4">
             {isRefreshing ? (
               <div className="flex items-center justify-center py-12">
                 <div className="flex items-center gap-2 text-muted-foreground">
@@ -175,77 +199,86 @@ export function OrdersTable() {
                 </div>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <Table className="min-w-[700px]">
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[80px]">Order ID</TableHead>
-                      <TableHead className="w-[80px]">Table</TableHead>
-                      <TableHead className="w-[100px] hidden sm:table-cell">Waiter</TableHead>
-                      <TableHead className="min-w-[150px]">Items</TableHead>
-                      <TableHead className="w-[100px]">Status</TableHead>
-                      <TableHead className="w-[80px]">Total</TableHead>
-                      <TableHead className="w-[80px] hidden md:table-cell">Time</TableHead>
-                      <TableHead className="w-[100px]">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredOrders.map((order) => {
-                      const isCancelling = cancellingOrders.has(order.id)
-                      return (
-                        <OrderDetailsDialog key={order.id} order={order}>
-                          <TableRow className={`cursor-pointer hover:bg-muted/50 ${isCancelling ? "opacity-50" : ""}`}>
-                            <TableCell className="font-medium text-xs sm:text-sm">#{order.id}</TableCell>
-                            <TableCell className="text-xs sm:text-sm">Table {order.tableNumber}</TableCell>
-                            <TableCell className="hidden sm:table-cell text-xs sm:text-sm">
-                              {getWaiterName(order.waiterId)}
-                            </TableCell>
-                            <TableCell className="max-w-[150px] truncate text-xs sm:text-sm">
-                              {getOrderItems(order)}
-                            </TableCell>
-                            <TableCell>
-                              <Badge className={`${getStatusColor(order.status)} text-xs`} variant="outline">
-                                {order.status}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-xs sm:text-sm font-medium">
-                              ${order.totalAmount.toFixed(2)}
-                            </TableCell>
-                            <TableCell className="hidden md:table-cell">
-                              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                                <Clock className="h-3 w-3" />
-                                {new Date(order.createdAt).toLocaleTimeString([], {
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                })}
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                                <div className="hidden sm:flex items-center gap-1">
-                                  <EditOrderDialog order={order} />
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleCancelOrder(order.id)}
-                                    disabled={isCancelling}
-                                  >
-                                    {isCancelling ? <LoadingSpinner size="sm" /> : <Trash2 className="h-4 w-4" />}
-                                  </Button>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
+                {filteredOrders.map((order) => {
+                  const isProcessing = cancellingOrders.has(order.id)
+                  const service = getServiceType(order)
+                  const stepIndex = Math.max(0, statusSteps.indexOf(order.status))
+                  return (
+                    <OrderDetailsDialog key={order.id} order={order} onOrderUpdate={refreshOrders}>
+                      <div className={`rounded-lg border p-4 bg-card cursor-pointer ${isProcessing ? "opacity-50" : ""}`}>
+                        <div className="flex items-start justify-between">
+                          <div className="space-y-1">
+                            <p className="font-semibold text-sm">ORD-{order.id.padStart(4, "0")}</p>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Badge variant="outline" className={`text-xs ${getStatusColor(order.status)}`}>{order.status.charAt(0).toUpperCase() + order.status.slice(1)}</Badge>
+                              <Badge variant="outline" className={`text-xs ${getServiceBadgeClass(service)}`}>{service}</Badge>
+                              {service === "Dine-in" && (
+                                <Badge variant="outline" className="text-xs">Table {order.tableNumber}</Badge>
+                              )}
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm font-semibold">${order.totalAmount.toFixed(2)}</p>
+                            <p className="text-xs text-muted-foreground">{new Date(order.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</p>
+                          </div>
+                        </div>
+
+                        <div className="mt-3 flex items-center gap-2 text-red-500">
+                          {(() => {
+                            const totalDishes = order.items.reduce((sum, it) => sum + (it.quantity || 1), 0)
+                            const segments = Math.min(4, Math.max(1, totalDishes))
+                            return Array.from({ length: segments }).map((_, idx) => (
+                              <span key={`seg-${order.id}-${idx}`} className="flex items-center gap-2">
+                                <span aria-hidden className="h-2 w-2 rounded-full bg-red-500"></span>
+                                {idx < segments - 1 && (
+                                  <span aria-hidden className="h-0.5 w-10 rounded-full bg-red-500"></span>
+                                )}
+                              </span>
+                            ))
+                          })()}
+                        </div>
+
+                        <div className="mt-3 rounded-md border bg-muted/50">
+                          <div className="divide-y">
+                            {order.items.map((item) => {
+                              const menuItem = mockMenuItems.find((mi) => mi.id === item.menuItemId)
+                              return (
+                                <div key={item.id} className="flex items-center justify-between px-3 py-2">
+                                  <div className="text-sm text-foreground">
+                                    {(menuItem?.name || "Item")} × {item.quantity}
+                                    {item.specialInstructions ? (
+                                      <span className="ml-2 text-xs text-muted-foreground">{item.specialInstructions}</span>
+                                    ) : null}
+                                  </div>
+                                  <div className="text-sm text-muted-foreground">${item.price.toFixed(2)}</div>
                                 </div>
-                                <div className="sm:hidden">
-                                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                                    <MoreHorizontal className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        </OrderDetailsDialog>
-                      )
-                    })}
-                  </TableBody>
-                </Table>
+                              )
+                            })}
+                          </div>
+                        </div>
+
+                        {order.notes && (
+                          <div className="mt-2 text-xs text-muted-foreground">{order.notes}</div>
+                        )}
+
+                        <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
+                          <div className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" /> Updated {new Date(order.updatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                          </div>
+                          <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
+                            <Button variant="ghost" size="sm" className="px-2 h-8" onClick={() => handleRevert(order.id)} onMouseDown={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()} disabled={isProcessing}>
+                              {isProcessing ? <LoadingSpinner size="sm" /> : <><Undo2 className="h-4 w-4 mr-1" /> Revert</>}
+                            </Button>
+                            <NewOrderDialog editOrderId={order.id} preSelectedTable={String(order.tableNumber)}>
+                              <Button variant="outline" size="sm" className="h-8" onMouseDown={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>Modify</Button>
+                            </NewOrderDialog>
+                          </div>
+                        </div>
+                      </div>
+                    </OrderDetailsDialog>
+                  )
+                })}
               </div>
             )}
 
@@ -264,3 +297,4 @@ export function OrdersTable() {
     </div>
   )
 }
+

@@ -8,19 +8,23 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
-import { Clock, User, MapPin, DollarSign, Edit } from "lucide-react"
-import { mockMenuItems, mockUsers, mockTables } from "@/lib/mock-data"
+import { Clock, User, MapPin, DollarSign, Edit, Calendar, Undo2, X } from "lucide-react"
+import { mockMenuItems, mockUsers, mockTables, cancelOrder } from "@/lib/mock-data"
 import type { Order } from "@/lib/types"
 import { EditOrderDialog } from "./edit-order-dialog"
+import { NewOrderDialog } from "./new-order-dialog"
+import { LoadingSpinner } from "./ui/loading-spinner"
 
 interface OrderDetailsDialogProps {
   order: Order
   children: React.ReactNode
   editable?: boolean
+  onOrderUpdate?: () => void
 }
 
-export function OrderDetailsDialog({ order, children, editable = true }: OrderDetailsDialogProps) {
+export function OrderDetailsDialog({ order, children, editable = true, onOrderUpdate }: OrderDetailsDialogProps) {
   const [open, setOpen] = useState(false)
+  const [isProcessing, setIsProcessing] = useState(false)
 
   const getStatusColor = (status: Order["status"]) => {
     switch (status) {
@@ -64,16 +68,63 @@ export function OrderDetailsDialog({ order, children, editable = true }: OrderDe
   const orderItems = getOrderItems()
   const tableInfo = getTableInfo(order.tableNumber)
 
+  const statusSteps: Order["status"][] = ["pending", "confirmed", "preparing", "ready", "served"]
+  const getServiceType = (o: Order) => {
+    const mod = Number.parseInt(o.id) % 3
+    if (mod === 0) return "Delivery"
+    if (mod === 1) return "Takeaway"
+    return "Dine-in"
+  }
+  const getServiceBadgeClass = (service: string) => {
+    switch (service) {
+      case "Delivery":
+        return "bg-sky-100 text-sky-800 border-sky-200"
+      case "Takeaway":
+        return "bg-purple-100 text-purple-800 border-purple-200"
+      default:
+        return "bg-emerald-100 text-emerald-800 border-emerald-200"
+    }
+  }
+
+  const handleCancelOrder = async () => {
+    setIsProcessing(true)
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 500)) // Simulate API call
+      cancelOrder(order.id)
+      if (onOrderUpdate) {
+        onOrderUpdate()
+      }
+      setOpen(false)
+    } catch (error) {
+      console.error("Failed to cancel order:", error)
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
-            <span>Order Details - #{order.id}</span>
-            <Badge className={getStatusColor(order.status)} variant="outline">
-              {order.status}
-            </Badge>
+            <div className="flex items-center gap-3">
+              <span className="font-semibold">ORD-{order.id.padStart(4, "0")}</span>
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className={`text-xs ${getStatusColor(order.status)}`}>{order.status.charAt(0).toUpperCase() + order.status.slice(1)}</Badge>
+                {(() => {
+                  const svc = getServiceType(order)
+                  return <Badge variant="outline" className={`text-xs ${getServiceBadgeClass(svc)}`}>{svc}</Badge>
+                })()}
+                {getServiceType(order) === "Dine-in" && (
+                  <Badge variant="outline" className="text-xs">Table {order.tableNumber}</Badge>
+                )}
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="text-sm font-semibold">${order.totalAmount.toFixed(2)}</p>
+              <p className="text-xs text-muted-foreground">{new Date(order.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</p>
+            </div>
           </DialogTitle>
         </DialogHeader>
 
@@ -104,12 +155,19 @@ export function OrderDetailsDialog({ order, children, editable = true }: OrderDe
                   <span className="text-sm font-medium">Total: ${order.totalAmount.toFixed(2)}</span>
                 </div>
               </div>
-              {order.specialInstructions && (
-                <div>
-                  <h4 className="text-sm font-medium mb-1">Special Instructions:</h4>
-                  <p className="text-sm text-muted-foreground bg-muted p-2 rounded">{order.specialInstructions}</p>
-                </div>
+              {order.notes && (
+                <div className="text-sm text-muted-foreground bg-muted p-2 rounded">{order.notes}</div>
               )}
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <div className="flex items-center gap-1">
+                  <Clock className="h-3 w-3" /> Updated {new Date(order.updatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                </div>
+                {order.estimatedReadyTime && (
+                  <div className="flex items-center gap-1">
+                    <Calendar className="h-3 w-3" /> ETA {new Date(order.estimatedReadyTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
 
@@ -119,20 +177,20 @@ export function OrderDetailsDialog({ order, children, editable = true }: OrderDe
               <CardTitle className="text-lg">Order Items</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                {orderItems.map((item, index) => (
-                  <div key={index} className="flex justify-between items-center p-3 bg-muted rounded-lg">
-                    <div className="flex-1">
-                      <h4 className="font-medium">{item.menuItem.name}</h4>
-                      <p className="text-sm text-muted-foreground capitalize">{item.menuItem.category}</p>
+              <div className="rounded-md border bg-muted/50">
+                <div className="divide-y">
+                  {orderItems.map((item) => (
+                    <div key={item.id} className="flex items-center justify-between px-3 py-2">
+                      <div className="text-sm text-foreground">
+                        {item.menuItem.name} × {item.quantity}
+                        {item.specialInstructions ? (
+                          <span className="ml-2 text-xs text-muted-foreground">{item.specialInstructions}</span>
+                        ) : null}
+                      </div>
+                      <div className="text-sm text-muted-foreground">${item.price.toFixed(2)}</div>
                     </div>
-                    <div className="text-right">
-                      <p className="font-medium">Qty: {item.quantity}</p>
-                      <p className="text-sm text-muted-foreground">${item.menuItem.price.toFixed(2)} each</p>
-                      <p className="font-medium">${(item.quantity * item.menuItem.price).toFixed(2)}</p>
-                    </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
 
               <Separator className="my-4" />
@@ -145,17 +203,38 @@ export function OrderDetailsDialog({ order, children, editable = true }: OrderDe
           </Card>
 
           {/* Actions */}
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setOpen(false)}>
-              Close
-            </Button>
-            {editable && (
-              <EditOrderDialog order={order}>
-                <Button>
-                  <Edit className="h-4 w-4 mr-2" />
-                  Edit Order
-                </Button>
-              </EditOrderDialog>
+          <div className="flex flex-col sm:flex-row sm:justify-end gap-2">
+            <div className="flex gap-2 order-2 sm:order-1">
+              <Button variant="outline" onClick={() => setOpen(false)}>
+                Close
+              </Button>
+              {editable && (
+                <NewOrderDialog editOrderId={order.id} preSelectedTable={String(order.tableNumber)}>
+                  <Button variant="outline">
+                    Modify
+                  </Button>
+                </NewOrderDialog>
+              )}
+            </div>
+            {order.status !== "cancelled" && order.status !== "served" && (
+              <Button 
+                variant="destructive" 
+                onClick={handleCancelOrder}
+                disabled={isProcessing}
+                className="order-1 sm:order-2"
+              >
+                {isProcessing ? (
+                  <>
+                    <LoadingSpinner size="sm" className="mr-2" />
+                    Cancelling...
+                  </>
+                ) : (
+                  <>
+                    <X className="h-4 w-4 mr-2" />
+                    Cancel Order
+                  </>
+                )}
+              </Button>
             )}
           </div>
         </div>

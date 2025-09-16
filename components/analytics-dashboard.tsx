@@ -36,26 +36,9 @@ import {
 } from "recharts"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { StaffDetailsDialog } from "./staff-details-dialog"
+import type { Staff } from "@/lib/types" // Import the correct Staff type
 
 const COLORS = ["#00AEEF", "#FF6B35", "#4ECDC4", "#45B7D1", "#96CEB4", "#FFEAA7"]
-
-// Define Staff type
-type Staff = {
-  id: string
-  name: string
-  fullName: string
-  avatar: string
-  role: string
-  status: string
-  dailyHours: number
-  entryTime: string
-  exitTime: string
-  agreedSalary: number
-  advancedSalaryTaken: number
-  efficiency: number
-  contactNumber: string
-  dateOfJoining: Date
-}
 
 const AnalyticsDashboardComponent = () => {
   const [reportType, setReportType] = useState<"sales" | "staff">("sales")
@@ -72,7 +55,7 @@ const AnalyticsDashboardComponent = () => {
     hoursWorked: staff.dailyHours,
     entryTime: staff.entryTime,
     exitTime: staff.exitTime,
-    status: staff.status === "working" ? "present" : staff.status === "on leave" ? "on leave" : "absent",
+    status: staff.status === "working" ? "present" : "absent",
     efficiency: staff.efficiency,
     ordersHandled: Math.floor(staff.efficiency * 0.5), // Derive orders from efficiency
   }))
@@ -114,7 +97,11 @@ const AnalyticsDashboardComponent = () => {
       (acc, item) => {
         const category = item.category
         const orderItems = filteredOrders.flatMap((order) => order.items)
-        const itemOrders = orderItems.filter((orderItem) => orderItem.name === item.name)
+        // Fix: Use menuItemId to find the menu item instead of name
+        const itemOrders = orderItems.filter((orderItem) => {
+          const menuItem = mockMenuItems.find(mi => mi.id === orderItem.menuItemId)
+          return menuItem?.name === item.name
+        })
         const revenue = itemOrders.reduce((sum, orderItem) => sum + orderItem.price * orderItem.quantity, 0)
 
         acc[category] = (acc[category] || 0) + revenue
@@ -127,7 +114,11 @@ const AnalyticsDashboardComponent = () => {
     const itemSales = mockMenuItems
       .map((item) => {
         const orderItems = filteredOrders.flatMap((order) => order.items)
-        const itemOrders = orderItems.filter((orderItem) => orderItem.name === item.name)
+        // Fix: Use menuItemId to find the menu item instead of name
+        const itemOrders = orderItems.filter((orderItem) => {
+          const menuItem = mockMenuItems.find(mi => mi.id === orderItem.menuItemId)
+          return menuItem?.name === item.name
+        })
         const quantity = itemOrders.reduce((sum, orderItem) => sum + orderItem.quantity, 0)
         const revenue = itemOrders.reduce((sum, orderItem) => sum + orderItem.price * orderItem.quantity, 0)
 
@@ -195,6 +186,39 @@ const AnalyticsDashboardComponent = () => {
       ]
     }
 
+    // Generate a weekly heatmap (7 days x 24 hours) for Peak Hours visualization
+    const getPeakHoursHeatmap = () => {
+      // Base profile: low overnight, lunch (12-14), dinner (18-21) peaks
+      const baseHourIntensity = (hour: number) => {
+        // hour is 0-23
+        const lunchPeak = Math.exp(-0.5 * Math.pow((hour - 13) / 1.5, 2))
+        const dinnerPeak = Math.exp(-0.5 * Math.pow((hour - 19) / 1.8, 2))
+        const breakfast = Math.exp(-0.5 * Math.pow((hour - 9) / 1.8, 2)) * 0.6
+        const lateNight = Math.exp(-0.5 * Math.pow((hour - 22) / 1.6, 2)) * 0.3
+        return 0.05 + lunchPeak * 1.0 + dinnerPeak * 1.2 + breakfast + lateNight
+      }
+
+      const dayMultiplier = (dayIndex: number) => {
+        // 0=Mon .. 6=Sun ; weekends busier
+        if (dayIndex === 5) return 1.2
+        if (dayIndex === 6) return 1.35
+        return 1 + (dayIndex % 2 === 0 ? 0.05 : -0.02)
+      }
+
+      const rangeMultiplier = dateRange === "1d" ? 1 : dateRange === "7d" ? 7 : dateRange === "30d" ? 30 : 90
+
+      const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+      return days.map((day, d) => {
+        const hours = Array.from({ length: 24 }, (_, h) => {
+          const base = baseHourIntensity(h)
+          const noise = 0.85 + Math.random() * 0.3
+          const value = Math.round(8 * base * dayMultiplier(d) * rangeMultiplier * noise)
+          return { hour: h, value }
+        })
+        return { day, hours }
+      })
+    }
+
     const getCustomerMetrics = () => {
       const baseNew = dateRange === "1d" ? 6 : dateRange === "7d" ? 38 : dateRange === "30d" ? 165 : 485
       const baseReturning = dateRange === "1d" ? 12 : dateRange === "7d" ? 70 : dateRange === "30d" ? 300 : 850
@@ -217,6 +241,7 @@ const AnalyticsDashboardComponent = () => {
       leastItems: itemSales.slice(-5).reverse(),
       salesTrend: getSalesTrend(),
       peakHours: getPeakHours(),
+      peakHoursHeatmap: getPeakHoursHeatmap(),
       newCustomers: customerMetrics.newCustomers,
       returningCustomers: customerMetrics.returningCustomers,
       avgPrepTime: Math.round(15 + Math.random() * 6), // 15-21 minutes with variance
@@ -1199,9 +1224,9 @@ const AnalyticsDashboardComponent = () => {
             </Card>
           </div>
 
-          {/* Sales Details (existing) */}
-          <div className="grid gap-6 md:grid-cols-2">
-            <Card>
+          {/* Sales Details: make Top Items narrower and Peak Hours wider */}
+          <div className="grid gap-6 md:grid-cols-3">
+            <Card className="md:col-span-1">
               <CardHeader>
                 <CardTitle>Top Selling Items</CardTitle>
               </CardHeader>
@@ -1228,20 +1253,97 @@ const AnalyticsDashboardComponent = () => {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="md:col-span-2">
               <CardHeader>
                 <CardTitle>Peak Hours</CardTitle>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={200}>
-                  <BarChart data={analyticsData.peakHours}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="hour" />
-                    <YAxis />
-                    <Tooltip />
-                    <Bar dataKey="orders" fill="#00AEEF" />
-                  </BarChart>
-                </ResponsiveContainer>
+                {/* Heatmap: 7 days x 24 hours, scrollable on small screens */}
+                <div className="space-y-4">
+                  {/* Legend */}
+                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                    <span className="min-w-8 text-right">Low</span>
+                    <div className="relative h-2 flex-1 rounded-full overflow-hidden">
+                      <div className="absolute inset-0 bg-gradient-to-r from-blue-100 via-blue-400 to-blue-700 dark:from-blue-900 dark:via-blue-600 dark:to-blue-400" />
+                      <div className="absolute left-1/2 top-0 h-full w-px bg-border" />
+                    </div>
+                    <span className="min-w-8">High</span>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <div className="min-w-[760px] rounded-lg border border-border bg-card/30 p-2">
+                      <div className="grid grid-cols-[auto_repeat(24,minmax(20px,1fr))] gap-1">
+                        {(() => {
+                          const allValues = analyticsData.peakHoursHeatmap.flatMap((r: any) => r.hours.map((c: any) => c.value))
+                          const globalMax = Math.max(1, ...allValues)
+                          return (
+                            <>
+                              {/* Header row with hour labels */}
+                              <div className="text-[10px] text-muted-foreground sticky left-0 bg-card z-10"></div>
+                              {Array.from({ length: 24 }, (_, h) => (
+                                <div key={`h-${h}`} className="text-[10px] text-muted-foreground text-center pb-1">
+                                  {h % 3 === 0 ? `${h}:00` : ""}
+                                </div>
+                              ))}
+
+                              {/* Rows: days */}
+                              {analyticsData.peakHoursHeatmap.map((row: any) => {
+                                const dayTotal = row.hours.reduce((s: number, c: any) => s + c.value, 0) || 1
+                                return (
+                                  <div key={row.day} className="contents">
+                                    <div className="text-xs text-muted-foreground sticky left-0 bg-card z-10 pr-2 py-1">
+                                      {row.day}
+                                    </div>
+                                    {row.hours.map((cell: any) => {
+                                      const intensity = Math.min(1, cell.value / globalMax)
+                                      const lightness = 90 - Math.round(intensity * 55) // 90->35
+                                      const bg = `hsl(210 100% ${lightness}%)`
+                                      const pctOfDay = (cell.value / dayTotal) * 100
+                                      const avgValue = analyticsData.avgOrderValue || 0
+                                      const cellRevenue = cell.value * avgValue
+                                      const dayRevenueTotal = dayTotal * avgValue || 1
+                                      const revPctOfDay = (cellRevenue / dayRevenueTotal) * 100
+                                      const posClass =
+                                        cell.hour <= 2
+                                          ? "left-0"
+                                          : cell.hour >= 21
+                                          ? "right-0"
+                                          : "left-1/2 -translate-x-1/2"
+                                      return (
+                                        <div key={`${row.day}-${cell.hour}`} className="relative group">
+                                          <div
+                                            className="h-6 rounded-sm transition-transform duration-150 ease-out hover:scale-[1.03] hover:ring-2 hover:ring-primary/60 hover:ring-offset-1 hover:ring-offset-background cursor-pointer"
+                                            style={{ backgroundColor: bg }}
+                                          />
+                                          <div className={`pointer-events-none absolute -top-8 ${posClass} whitespace-nowrap rounded-md border bg-popover px-1.5 py-0.5 text-[10px] text-popover-foreground shadow-md invisible group-hover:visible group-hover:opacity-100 opacity-0 z-50`}>
+                                            {`Orders: ${pctOfDay.toFixed(1)}% day | Revenue: ${revPctOfDay.toFixed(1)}% day`}
+                                          </div>
+                                        </div>
+                                      )
+                                    })}
+                                  </div>
+                                )
+                              })}
+                            </>
+                          )
+                        })()}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Fallback small bar chart on very small viewports */}
+                  <div className="md:hidden">
+                    <ResponsiveContainer width="100%" height={180}>
+                      <BarChart data={analyticsData.peakHours}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="hour" />
+                        <YAxis />
+                        <Tooltip />
+                        <Bar dataKey="orders" fill="#3b82f6" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </div>
@@ -1256,49 +1358,109 @@ const AnalyticsDashboardComponent = () => {
       ) : (
         <div className="grid gap-6 md:grid-cols-3">
           <Card>
-            <CardHeader>
+            <CardHeader className="pb-3">
               <CardTitle>Customer Insights</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
-                <span className="text-sm">New Customers</span>
-                <Badge variant="secondary">{analyticsData.newCustomers}</Badge>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Users className="h-3.5 w-3.5" />
+                  New Customers
+                </div>
+                <div className="text-sm font-medium">
+                  {analyticsData.newCustomers}
+                </div>
               </div>
+
               <div className="flex items-center justify-between">
-                <span className="text-sm">Returning Customers</span>
-                <Badge variant="default">{analyticsData.returningCustomers}</Badge>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <UserCheck className="h-3.5 w-3.5" />
+                  Returning Customers
+                </div>
+                <div className="text-sm font-medium">
+                  {analyticsData.returningCustomers}
+                </div>
               </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm">Customer Retention</span>
-                <Badge variant="outline">
-                  {Math.round(
-                    (analyticsData.returningCustomers /
-                      (analyticsData.newCustomers + analyticsData.returningCustomers)) *
-                      100,
-                  )}
-                  %
-                </Badge>
-              </div>
+
+              {(() => {
+                const total = analyticsData.newCustomers + analyticsData.returningCustomers || 1
+                const retention = Math.round((analyticsData.returningCustomers / total) * 100)
+                return (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Target className="h-3.5 w-3.5" />
+                        Customer Retention
+                      </div>
+                      <Badge variant="outline">{retention}%</Badge>
+                    </div>
+                    <Progress value={retention} className="h-2" />
+                    <div className="flex justify-between text-[11px] text-muted-foreground">
+                      <span>Loyalty</span>
+                      <span>Total {total}</span>
+                    </div>
+                  </div>
+                )
+              })()}
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader>
+            <CardHeader className="pb-3">
               <CardTitle>Kitchen Performance</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm">Avg Prep Time</span>
-                <Badge variant="secondary">{analyticsData.avgPrepTime}m</Badge>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm">Orders on Time</span>
-                <Badge variant="default">94%</Badge>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm">Kitchen Efficiency</span>
-                <Badge variant="outline">Excellent</Badge>
-              </div>
+            <CardContent className="space-y-5">
+              {(() => {
+                const target = 18
+                const worst = 25
+                const best = 10
+                const prep = analyticsData.avgPrepTime
+                const progress = Math.max(0, Math.min(100, ((worst - prep) / (worst - best)) * 100))
+                const onTime = 94
+                return (
+                  <>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Clock className="h-3.5 w-3.5" />
+                          Avg Prep Time
+                        </div>
+                        <span className="text-sm font-medium">{prep}m</span>
+                      </div>
+                      <Progress value={progress} className="h-2" />
+                      <div className="flex justify-between text-[11px] text-muted-foreground">
+                        <span>Faster</span>
+                        <span>Target {target}m</span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <TrendingUp className="h-3.5 w-3.5" />
+                          Orders on Time
+                        </div>
+                        <span className="text-sm font-medium">{onTime}%</span>
+                      </div>
+                      <Progress value={onTime} className="h-2" />
+                      <div className="flex justify-between text-[11px] text-muted-foreground">
+                        <span>Threshold 90%</span>
+                        <span>Goal 95%</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Target className="h-3.5 w-3.5" />
+                        Kitchen Efficiency
+                      </div>
+                      <Badge variant={progress > 66 && onTime >= 92 ? "default" : "secondary"}>
+                        {progress > 66 && onTime >= 92 ? "Excellent" : progress > 40 ? "Good" : "Average"}
+                      </Badge>
+                    </div>
+                  </>
+                )
+              })()}
             </CardContent>
           </Card>
 

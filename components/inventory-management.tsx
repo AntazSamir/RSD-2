@@ -1,383 +1,287 @@
 "use client"
 
 import { useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { format } from "date-fns"
+import { Box, Search, Plus, AlertTriangle, Package } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Package, Search, Plus, AlertTriangle, TrendingUp, TrendingDown, Edit, Trash2, Calendar } from "lucide-react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Progress } from "@/components/ui/progress"
+import { Badge } from "@/components/ui/badge"
+import { mockInventoryItems, type InventoryItem } from "@/lib/mock-data"
+import { AddInventoryItemDialog } from "./add-inventory-item-dialog"
+import { EditInventoryItemDialog } from "./edit-inventory-item-dialog"
 
-// Mock inventory data
-const mockInventory = [
-  {
-    id: "1",
-    name: "Tomatoes",
-    category: "Vegetables",
-    currentStock: 25,
-    minStock: 10,
-    maxStock: 50,
-    unit: "lbs",
-    costPerUnit: 2.5,
-    supplier: "Fresh Farm Co.",
-    lastRestocked: "2024-01-10",
-    expiryDate: "2024-01-20",
-    status: "in-stock",
-  },
-  {
-    id: "2",
-    name: "Chicken Breast",
-    category: "Meat",
-    currentStock: 8,
-    minStock: 15,
-    maxStock: 40,
-    unit: "lbs",
-    costPerUnit: 6.99,
-    supplier: "Premium Meats",
-    lastRestocked: "2024-01-12",
-    expiryDate: "2024-01-18",
-    status: "low-stock",
-  },
-  {
-    id: "3",
-    name: "Olive Oil",
-    category: "Oils & Condiments",
-    currentStock: 12,
-    minStock: 5,
-    maxStock: 20,
-    unit: "bottles",
-    costPerUnit: 8.5,
-    supplier: "Mediterranean Imports",
-    lastRestocked: "2024-01-08",
-    expiryDate: "2024-12-31",
-    status: "in-stock",
-  },
-  {
-    id: "4",
-    name: "Salmon Fillet",
-    category: "Seafood",
-    currentStock: 2,
-    minStock: 8,
-    maxStock: 25,
-    unit: "lbs",
-    costPerUnit: 12.99,
-    supplier: "Ocean Fresh",
-    lastRestocked: "2024-01-14",
-    expiryDate: "2024-01-17",
-    status: "critical",
-  },
-  {
-    id: "5",
-    name: "Pasta",
-    category: "Dry Goods",
-    currentStock: 45,
-    minStock: 20,
-    maxStock: 60,
-    unit: "boxes",
-    costPerUnit: 1.25,
-    supplier: "Italian Imports",
-    lastRestocked: "2024-01-05",
-    expiryDate: "2024-06-30",
-    status: "in-stock",
-  },
+const categories = [
+  { id: "all", label: "All" },
+  { id: "protein", label: "Protein" },
+  { id: "vegetables", label: "Vegetables" },
+  { id: "dairy", label: "Dairy" },
+  { id: "grains", label: "Grains" },
+  { id: "beverages", label: "Beverages" },
+  { id: "condiments", label: "Condiments" },
 ]
 
-export default function InventoryManagement() {
-  const [inventory, setInventory] = useState(mockInventory)
+export function InventoryManagement() {
   const [searchTerm, setSearchTerm] = useState("")
-  const [categoryFilter, setCategoryFilter] = useState("all")
-  const [statusFilter, setStatusFilter] = useState("all")
-  const [newItemOpen, setNewItemOpen] = useState(false)
+  const [selectedCategory, setSelectedCategory] = useState("all")
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
+  const [editingItem, setEditingItem] = useState<InventoryItem | null>(null)
 
-  const filteredInventory = inventory.filter((item) => {
-    const matchesSearch =
-      item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.supplier.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesCategory = categoryFilter === "all" || item.category === categoryFilter
-    const matchesStatus = statusFilter === "all" || item.status === statusFilter
-
-    return matchesSearch && matchesCategory && matchesStatus
+  // Filter items based on search and category
+  const filteredItems = mockInventoryItems.filter((item) => {
+    const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesCategory = selectedCategory === "all" || item.category === selectedCategory
+    return matchesSearch && matchesCategory
   })
 
-  const totalItems = inventory.length
-  const lowStockItems = inventory.filter((item) => item.status === "low-stock" || item.status === "critical").length
-  const totalValue = inventory.reduce((sum, item) => sum + item.currentStock * item.costPerUnit, 0)
-  const criticalItems = inventory.filter((item) => item.status === "critical").length
+  // Get low stock items (current stock <= threshold)
+  const lowStockItems = mockInventoryItems.filter(
+    (item) => item.currentStock <= item.lowStockThreshold
+  )
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "in-stock":
-        return "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400"
-      case "low-stock":
-        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400"
-      case "critical":
-        return "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400"
-      default:
-        return "bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400"
-    }
+  // Get expiring items (expires within 3 days)
+  const expiringItems = mockInventoryItems.filter((item) => {
+    const threeDaysFromNow = new Date()
+    threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3)
+    return item.expiresAt <= threeDaysFromNow
+  })
+
+  const getStockProgressColor = (item: InventoryItem) => {
+    if (item.currentStock === 0) return "bg-red-500"
+    if (item.currentStock <= item.lowStockThreshold) return "bg-orange-500"
+    return "bg-green-500"
   }
 
-  const getStockIcon = (item: any) => {
-    if (item.currentStock <= item.minStock * 0.5) {
-      return <TrendingDown className="h-4 w-4 text-red-500" />
-    } else if (item.currentStock <= item.minStock) {
-      return <AlertTriangle className="h-4 w-4 text-yellow-500" />
-    } else {
-      return <TrendingUp className="h-4 w-4 text-green-500" />
-    }
+  const getStockProgressPercentage = (item: InventoryItem) => {
+    return (item.currentStock / item.maxStock) * 100
   }
 
-  const categories = [...new Set(inventory.map((item) => item.category))]
+  const isExpiringSoon = (expiresAt: Date) => {
+    const threeDaysFromNow = new Date()
+    threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3)
+    return expiresAt <= threeDaysFromNow
+  }
+
+  const handleRestock = (item: InventoryItem) => {
+    // In a real app, this would open a restock dialog or API call
+    console.log("Restock item:", item.name)
+  }
+
+  const handleEdit = (item: InventoryItem) => {
+    setEditingItem(item)
+  }
 
   return (
-    <div className="space-y-6">
-      {/* Stats Cards */}
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Items</CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
+    <div className="space-y-6 p-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Box className="h-6 w-6" />
+          <h1 className="text-2xl font-bold">Inventory Management</h1>
+        </div>
+        <Button onClick={() => setIsAddDialogOpen(true)}>
+          <Plus className="mr-2 h-4 w-4" />
+          Add Item
+        </Button>
+      </div>
+
+      {/* Alerts Section */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Low Stock Alert */}
+        <Card className="border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-orange-700 dark:text-orange-300">
+              <AlertTriangle className="h-5 w-5" />
+              Low Stock Alert
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalItems}</div>
-            <p className="text-xs text-muted-foreground">Across all categories</p>
+            {lowStockItems.length > 0 ? (
+              <ul className="space-y-1">
+                {lowStockItems.slice(0, 3).map((item) => (
+                  <li key={item.id} className="text-sm text-orange-600 dark:text-orange-400">
+                    {item.name}
+                  </li>
+                ))}
+                {lowStockItems.length > 3 && (
+                  <li className="text-sm text-orange-600 dark:text-orange-400">
+                    +{lowStockItems.length - 3} more...
+                  </li>
+                )}
+              </ul>
+            ) : (
+              <p className="text-sm text-orange-600 dark:text-orange-400">No low stock items</p>
+            )}
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Low Stock Alerts</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-yellow-500" />
+        {/* Expiring Soon Alert */}
+        <Card className="border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-red-700 dark:text-red-300">
+              <AlertTriangle className="h-5 w-5" />
+              Expiring Soon
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-yellow-600">{lowStockItems}</div>
-            <p className="text-xs text-muted-foreground">Items need restocking</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Value</CardTitle>
-            <Badge variant="outline" className="text-xs">
-              $
-            </Badge>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">${totalValue.toFixed(2)}</div>
-            <p className="text-xs text-muted-foreground">Current inventory value</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Critical Items</CardTitle>
-            <TrendingDown className="h-4 w-4 text-red-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">{criticalItems}</div>
-            <p className="text-xs text-muted-foreground">Immediate attention needed</p>
+            {expiringItems.length > 0 ? (
+              <ul className="space-y-1">
+                {expiringItems.slice(0, 3).map((item) => (
+                  <li key={item.id} className="text-sm text-red-600 dark:text-red-400">
+                    {item.name}
+                  </li>
+                ))}
+                {expiringItems.length > 3 && (
+                  <li className="text-sm text-red-600 dark:text-red-400">
+                    +{expiringItems.length - 3} more...
+                  </li>
+                )}
+              </ul>
+            ) : (
+              <p className="text-sm text-red-600 dark:text-red-400">No items expiring soon</p>
+            )}
           </CardContent>
         </Card>
       </div>
 
-      {/* Filters and Add Item */}
-      <div className="flex flex-col lg:flex-row gap-4 items-center justify-between">
-        <div className="flex flex-col sm:flex-row gap-4 items-center flex-1">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      {/* Inventory Items Section */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-semibold">Inventory Items</h2>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
             <Input
-              placeholder="Search inventory..."
+              placeholder="Search items..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
+              className="pl-10 w-64"
             />
           </div>
-
-          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Category" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Categories</SelectItem>
-              {categories.map((category) => (
-                <SelectItem key={category} value={category}>
-                  {category}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[150px]">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="in-stock">In Stock</SelectItem>
-              <SelectItem value="low-stock">Low Stock</SelectItem>
-              <SelectItem value="critical">Critical</SelectItem>
-            </SelectContent>
-          </Select>
         </div>
 
-        <Dialog open={newItemOpen} onOpenChange={setNewItemOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Item
+        {/* Category Filters */}
+        <div className="flex flex-wrap gap-2">
+          {categories.map((category) => (
+            <Button
+              key={category.id}
+              variant={selectedCategory === category.id ? "default" : "outline"}
+              size="sm"
+              onClick={() => setSelectedCategory(category.id)}
+            >
+              {category.label}
             </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[500px]">
-            <DialogHeader>
-              <DialogTitle>Add New Inventory Item</DialogTitle>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="itemName" className="text-right">
-                  Name
-                </Label>
-                <Input id="itemName" className="col-span-3" />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="category" className="text-right">
-                  Category
-                </Label>
-                <Select>
-                  <SelectTrigger className="col-span-3">
-                    <SelectValue placeholder="Select category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((category) => (
-                      <SelectItem key={category} value={category}>
-                        {category}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="currentStock" className="text-right">
-                  Current Stock
-                </Label>
-                <Input id="currentStock" type="number" className="col-span-3" />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="minStock" className="text-right">
-                  Min Stock
-                </Label>
-                <Input id="minStock" type="number" className="col-span-3" />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="unit" className="text-right">
-                  Unit
-                </Label>
-                <Input id="unit" className="col-span-3" placeholder="e.g., lbs, boxes, bottles" />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="costPerUnit" className="text-right">
-                  Cost/Unit
-                </Label>
-                <Input id="costPerUnit" type="number" step="0.01" className="col-span-3" />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="supplier" className="text-right">
-                  Supplier
-                </Label>
-                <Input id="supplier" className="col-span-3" />
-              </div>
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setNewItemOpen(false)}>
-                Cancel
-              </Button>
-              <Button onClick={() => setNewItemOpen(false)}>Add Item</Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+          ))}
+        </div>
+
+        {/* Inventory Items Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredItems.map((item) => (
+            <Card key={item.id} className="hover:shadow-md transition-shadow">
+              <CardHeader className="pb-3">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <CardTitle className="text-lg">{item.name}</CardTitle>
+                    <Badge variant="secondary" className="mt-1">
+                      {item.category}
+                    </Badge>
+                  </div>
+                  <Package className="h-5 w-5 text-gray-400" />
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Stock Level */}
+                <div>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span>Stock Level</span>
+                    <span>
+                      {item.currentStock}/{item.maxStock} {item.unit}
+                    </span>
+                  </div>
+                  <Progress
+                    value={getStockProgressPercentage(item)}
+                    className="h-2"
+                  />
+                  <div className="flex justify-between text-xs text-gray-500 mt-1">
+                    <span>0</span>
+                    <span>{item.maxStock}</span>
+                  </div>
+                </div>
+
+                {/* Item Details */}
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-gray-500">Cost/Unit:</span>
+                    <div className="font-medium">${item.costPerUnit}</div>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Total Value:</span>
+                    <div className="font-medium">${item.totalValue.toFixed(2)}</div>
+                  </div>
+                </div>
+
+                <div className="space-y-2 text-sm">
+                  <div>
+                    <span className="text-gray-500">Supplier:</span>
+                    <div className="font-medium">{item.supplier}</div>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Last Restocked:</span>
+                    <div className="font-medium">{format(item.lastRestocked, "MMM dd")}</div>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Expires:</span>
+                    <div className={`font-medium ${isExpiringSoon(item.expiresAt) ? "text-red-600" : ""}`}>
+                      {format(item.expiresAt, "MMM dd")}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex gap-2 pt-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleRestock(item)}
+                    className="flex-1"
+                  >
+                    Restock
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleEdit(item)}
+                    className="flex-1"
+                  >
+                    Edit
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {filteredItems.length === 0 && (
+          <div className="text-center py-8">
+            <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <p className="text-gray-500">No inventory items found</p>
+          </div>
+        )}
       </div>
 
-      {/* Inventory Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Inventory Items</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Item</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead>Stock Level</TableHead>
-                <TableHead>Unit Cost</TableHead>
-                <TableHead>Total Value</TableHead>
-                <TableHead>Supplier</TableHead>
-                <TableHead>Expiry</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredInventory.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      {getStockIcon(item)}
-                      <div>
-                        <p className="font-medium">{item.name}</p>
-                        <p className="text-sm text-muted-foreground">Last restocked: {item.lastRestocked}</p>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline">{item.category}</Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div>
-                      <p className="font-medium">
-                        {item.currentStock} {item.unit}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Min: {item.minStock} | Max: {item.maxStock}
-                      </p>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <span className="font-medium">${item.costPerUnit.toFixed(2)}</span>
-                  </TableCell>
-                  <TableCell>
-                    <span className="font-medium">${(item.currentStock * item.costPerUnit).toFixed(2)}</span>
-                  </TableCell>
-                  <TableCell>
-                    <p className="text-sm">{item.supplier}</p>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1 text-sm">
-                      <Calendar className="h-3 w-3" />
-                      {item.expiryDate}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge className={getStatusColor(item.status)}>{item.status.replace("-", " ")}</Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Button variant="ghost" size="sm">
-                        <Edit className="h-3 w-3" />
-                      </Button>
-                      <Button variant="ghost" size="sm" className="text-destructive">
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+      {/* Dialogs */}
+      <AddInventoryItemDialog
+        open={isAddDialogOpen}
+        onOpenChange={setIsAddDialogOpen}
+      />
+      
+      {editingItem && (
+        <EditInventoryItemDialog
+          item={editingItem}
+          open={!!editingItem}
+          onOpenChange={(open) => !open && setEditingItem(null)}
+        />
+      )}
     </div>
   )
 }

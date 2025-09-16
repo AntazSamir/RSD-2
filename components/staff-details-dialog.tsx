@@ -150,11 +150,11 @@ export function StaffDetailsDialog({ staff, open, onOpenChange }: StaffDetailsDi
                 <p className="font-medium">{staff.dailyHours}h</p>
               </div>
               <div>
-                <label className="text-sm font-medium text-muted-foreground">Today's Entry</label>
+                <label className="text-sm font-medium text-muted-foreground">Today&apos;s Entry</label>
                 <p className="font-medium">{staff.entryTime}</p>
               </div>
               <div>
-                <label className="text-sm font-medium text-muted-foreground">Today's Exit</label>
+                <label className="text-sm font-medium text-muted-foreground">Today&apos;s Exit</label>
                 <p className="font-medium">{staff.exitTime}</p>
               </div>
               <div>
