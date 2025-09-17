@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useMemo, useEffect, lazy, Suspense } from "react"
+import { useState, useCallback, useMemo, useEffect, lazy, Suspense, memo } from "react"
 import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -49,6 +49,112 @@ const TabLoadingSpinner = () => (
   </div>
 )
 
+// Memoized components to prevent unnecessary re-renders
+const TableTile = memo(({ table, currentOrder, isOccupied, handleAssignTable }: { 
+  table: any, 
+  currentOrder: any | null, 
+  isOccupied: boolean, 
+  handleAssignTable: (tableNumber: string) => void 
+}) => {
+  const bgByStatus =
+    table.status === "occupied"
+      ? "bg-red-50 dark:bg-red-950/40 border-red-200 dark:border-red-700/50"
+      : table.status === "reserved"
+        ? "bg-yellow-50 dark:bg-yellow-950/40 border-yellow-200 dark:border-yellow-700/50"
+        : table.status === "cleaning"
+          ? "bg-blue-50 dark:bg-blue-950/40 border-blue-200 dark:border-blue-700/50"
+          : "bg-green-50 dark:bg-green-950/40 border-green-200 dark:border-green-700/50"
+
+  const dotByStatus =
+    table.status === "occupied" ? "bg-red-500" :
+    table.status === "reserved" ? "bg-yellow-500" :
+    table.status === "cleaning" ? "bg-blue-500" : "bg-green-500"
+
+  const pillText = table.status === "cleaning" ? "available" : table.status
+
+  const tile = (
+    <div
+      className={`group border rounded-lg p-2 sm:p-3 hover:shadow-sm transition-colors ${bgByStatus}`}
+      onClick={() => !isOccupied && handleAssignTable(table.number.toString())}
+    >
+      <div className="flex items-center gap-2">
+        <span className={`w-2 h-2 rounded-full ${dotByStatus}`}></span>
+        <span className="font-medium text-sm">Table {table.number}</span>
+      </div>
+      <div className="mt-2">
+        <span className="inline-block text-[11px] px-2 py-0.5 rounded-full border capitalize">
+          {pillText}
+        </span>
+      </div>
+      <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
+        <span>Seats {table.capacity}</span>
+        {isOccupied && currentOrder && (
+          <span className="font-medium text-foreground">${currentOrder.totalAmount.toFixed(2)}</span>
+        )}
+      </div>
+    </div>
+  )
+
+  return isOccupied && currentOrder ? (
+    <OrderDetailsDialog key={table.id} order={currentOrder} editable={true}>
+      {tile}
+    </OrderDetailsDialog>
+  ) : (
+    tile
+  )
+})
+
+TableTile.displayName = 'TableTile'
+
+const StaffMember = memo(({ staff, staffStatus, staffTimes, toggleStaffStatus, updateStaffTime }: { 
+  staff: any, 
+  staffStatus: Record<string, "working" | "absent">,
+  staffTimes: Record<string, { shiftStart: string; shiftEnd: string }>,
+  toggleStaffStatus: (staffId: string) => void,
+  updateStaffTime: (staffId: string, shiftStart: string, shiftEnd: string) => void
+}) => {
+  const isWorking = staffStatus[staff.id] === "working"
+
+  return (
+    <div key={staff.id} className="flex items-center gap-3 py-1.5 px-2">
+      <div className={`w-6 h-6 bg-${isWorking ? 'green' : 'yellow'}-700 text-white rounded-full flex items-center justify-center text-[11px] font-medium`}>
+        {staff.avatar}
+      </div>
+      <div className="flex-1 min-w-0 leading-tight">
+        <p className="text-sm font-medium truncate">{staff.name}</p>
+        <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+          <span className="truncate">{staff.role}</span>
+          <span className="hidden xs:inline">•</span>
+          <EditStaffTimeDialog
+            staff={{
+              ...staff,
+              shiftStart: staffTimes[staff.id]?.shiftStart || staff.shiftStart,
+              shiftEnd: staffTimes[staff.id]?.shiftEnd || staff.shiftEnd,
+            }}
+            onTimeUpdate={updateStaffTime}
+          >
+            <button className="hover:text-primary">
+              {(staffTimes[staff.id]?.shiftStart || staff.shiftStart) + " - " + (staffTimes[staff.id]?.shiftEnd || staff.shiftEnd)}
+            </button>
+          </EditStaffTimeDialog>
+        </div>
+      </div>
+      <Button
+        size="icon"
+        variant="outline"
+        onClick={() => toggleStaffStatus(staff.id)}
+        className="h-7 w-7"
+        title={isWorking ? "Mark Absent" : "Mark Present"}
+      >
+        {isWorking ? <UserX className="h-4 w-4" /> : <UserCheck className="h-4 w-4" />}
+        <span className="sr-only">{isWorking ? "Mark Absent" : "Mark Present"}</span>
+      </Button>
+    </div>
+  )
+})
+
+StaffMember.displayName = 'StaffMember'
+
 export default function RestaurantDashboard() {
   const [activeTab, setActiveTab] = useState("overview")
   const [revenuePeriod, setRevenuePeriod] = useState<"monthly" | "weekly" | "today">("monthly")
@@ -69,7 +175,7 @@ export default function RestaurantDashboard() {
   const [holidays, setHolidays] = useState<string[]>([])
   const [autoResetEnabled, setAutoResetEnabled] = useState(true)
   const [resetInterval, setResetInterval] = useState(12)
-  const [settingsResetTrigger, setSettingsResetTrigger] = useState(0) // Add this state for reset trigger
+  const [settingsResetTrigger, setSettingsResetTrigger] = useState(0)
 
   const addHoliday = useCallback((date: string) => {
     setHolidays((prev) => [...prev, date])
@@ -113,6 +219,7 @@ export default function RestaurantDashboard() {
     return () => clearInterval(interval)
   }, [lastResetTime, holidays, autoResetEnabled, resetInterval])
 
+  // Memoize expensive calculations
   const dashboardStats = useMemo(() => {
     const activeOrders = mockOrders.filter((order) =>
       ["pending", "confirmed", "preparing"].includes(order.status),
@@ -130,8 +237,9 @@ export default function RestaurantDashboard() {
       avgOrderTime,
       occupancyRate,
     }
-  }, [])
+  }, []) // Only recompute when mock data changes
 
+  // Memoize chart data to prevent recalculation on every render
   const overviewCharts = useMemo(() => {
     // Generate simple, deterministic-ish demo data using mockOrders totals
     const baseRevenue = mockOrders.reduce((s, o) => s + o.totalAmount, 0)
@@ -180,7 +288,7 @@ export default function RestaurantDashboard() {
       revenue: { monthly: monthlyRevenue, weekly: weeklyRevenue, today: todayRevenue },
       orders: { monthly: ordersMonthly, weekly: ordersWeekly, today: ordersToday },
     }
-  }, [])
+  }, []) // Only calculate once
 
   const recentOrders = useMemo(() => mockOrders.slice(0, 3), [])
 
@@ -665,54 +773,16 @@ export default function RestaurantDashboard() {
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
                           {mockTables.map((table) => {
                             const currentOrder = getTableOrder(table.number)
-                            const isOccupied = table.status === "occupied" && currentOrder
+                            const isOccupied = table.status === "occupied" && currentOrder ? true : false
 
-                            const bgByStatus =
-                              table.status === "occupied"
-                                ? "bg-red-50 dark:bg-red-950/40 border-red-200 dark:border-red-700/50"
-                                : table.status === "reserved"
-                                  ? "bg-yellow-50 dark:bg-yellow-950/40 border-yellow-200 dark:border-yellow-700/50"
-                                  : table.status === "cleaning"
-                                    ? "bg-blue-50 dark:bg-blue-950/40 border-blue-200 dark:border-blue-700/50"
-                                    : "bg-green-50 dark:bg-green-950/40 border-green-200 dark:border-green-700/50"
-
-                            const dotByStatus =
-                              table.status === "occupied" ? "bg-red-500" :
-                              table.status === "reserved" ? "bg-yellow-500" :
-                              table.status === "cleaning" ? "bg-blue-500" : "bg-green-500"
-
-                            const pillText = table.status === "cleaning" ? "available" : table.status
-
-                            const tile = (
-                              <div
+                            return (
+                              <TableTile
                                 key={table.id}
-                                className={`group border rounded-lg p-2 sm:p-3 hover:shadow-sm transition-colors ${bgByStatus}`}
-                                onClick={() => !isOccupied && handleAssignTable(table.number.toString())}
-                              >
-                                <div className="flex items-center gap-2">
-                                  <span className={`w-2 h-2 rounded-full ${dotByStatus}`}></span>
-                                  <span className="font-medium text-sm">Table {table.number}</span>
-                                </div>
-                                <div className="mt-2">
-                                  <span className="inline-block text-[11px] px-2 py-0.5 rounded-full border capitalize">
-                                    {pillText}
-                                  </span>
-                                </div>
-                                <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
-                                  <span>Seats {table.capacity}</span>
-                                  {isOccupied && (
-                                    <span className="font-medium text-foreground">${currentOrder?.totalAmount.toFixed(2)}</span>
-                                  )}
-                                </div>
-                              </div>
-                            )
-
-                            return isOccupied ? (
-                              <OrderDetailsDialog key={table.id} order={currentOrder} editable={true}>
-                                {tile}
-                              </OrderDetailsDialog>
-                            ) : (
-                              tile
+                                table={table}
+                                currentOrder={currentOrder || null}
+                                isOccupied={isOccupied}
+                                handleAssignTable={handleAssignTable}
+                              />
                             )
                           })}
                         </div>
@@ -753,40 +823,14 @@ export default function RestaurantDashboard() {
                               {mockStaff
                                 .filter((staff) => staffStatus[staff.id] === "working")
                                 .map((staff) => (
-                                  <div key={staff.id} className="flex items-center gap-3 py-1.5 px-2">
-                                    <div className="w-6 h-6 bg-green-700 text-white rounded-full flex items-center justify-center text-[11px] font-medium">
-                                      {staff.avatar}
-                                    </div>
-                                    <div className="flex-1 min-w-0 leading-tight">
-                                      <p className="text-sm font-medium truncate">{staff.name}</p>
-                                      <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                                        <span className="truncate">{staff.role}</span>
-                                        <span className="hidden xs:inline">•</span>
-                                        <EditStaffTimeDialog
-                                          staff={{
-                                            ...staff,
-                                            shiftStart: staffTimes[staff.id]?.shiftStart || staff.shiftStart,
-                                            shiftEnd: staffTimes[staff.id]?.shiftEnd || staff.shiftEnd,
-                                          }}
-                                          onTimeUpdate={updateStaffTime}
-                                        >
-                                          <button className="hover:text-primary">
-                                            {(staffTimes[staff.id]?.shiftStart || staff.shiftStart) + " - " + (staffTimes[staff.id]?.shiftEnd || staff.shiftEnd)}
-                                          </button>
-                                        </EditStaffTimeDialog>
-                                      </div>
-                                    </div>
-                                    <Button
-                                      size="icon"
-                                      variant="outline"
-                                      onClick={() => toggleStaffStatus(staff.id)}
-                                      className="h-7 w-7"
-                                      title="Mark Absent"
-                                    >
-                                      <UserX className="h-4 w-4" />
-                                      <span className="sr-only">Mark Absent</span>
-                                    </Button>
-                                  </div>
+                                  <StaffMember
+                                    key={staff.id}
+                                    staff={staff}
+                                    staffStatus={staffStatus}
+                                    staffTimes={staffTimes}
+                                    toggleStaffStatus={toggleStaffStatus}
+                                    updateStaffTime={updateStaffTime}
+                                  />
                                 ))}
                             </div>
                           </div>
@@ -797,40 +841,14 @@ export default function RestaurantDashboard() {
                               {mockStaff
                                 .filter((staff) => staffStatus[staff.id] === "absent")
                                 .map((staff) => (
-                                  <div key={staff.id} className="flex items-center gap-3 py-1.5 px-2">
-                                    <div className="w-6 h-6 bg-yellow-700 text-white rounded-full flex items-center justify-center text-[11px] font-medium">
-                                      {staff.avatar}
-                                    </div>
-                                    <div className="flex-1 min-w-0 leading-tight">
-                                      <p className="text-sm font-medium truncate">{staff.name}</p>
-                                      <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                                        <span className="truncate">{staff.role}</span>
-                                        <span className="hidden xs:inline">•</span>
-                                        <EditStaffTimeDialog
-                                          staff={{
-                                            ...staff,
-                                            shiftStart: staffTimes[staff.id]?.shiftStart || staff.shiftStart,
-                                            shiftEnd: staffTimes[staff.id]?.shiftEnd || staff.shiftEnd,
-                                          }}
-                                          onTimeUpdate={updateStaffTime}
-                                        >
-                                          <button className="hover:text-primary">
-                                            {(staffTimes[staff.id]?.shiftStart || staff.shiftStart) + " - " + (staffTimes[staff.id]?.shiftEnd || staff.shiftEnd)}
-                                          </button>
-                                        </EditStaffTimeDialog>
-                                      </div>
-                                    </div>
-                                    <Button
-                                      size="icon"
-                                      variant="outline"
-                                      onClick={() => toggleStaffStatus(staff.id)}
-                                      className="h-7 w-7"
-                                      title="Mark Present"
-                                    >
-                                      <UserCheck className="h-4 w-4" />
-                                      <span className="sr-only">Mark Present</span>
-                                    </Button>
-                                  </div>
+                                  <StaffMember
+                                    key={staff.id}
+                                    staff={staff}
+                                    staffStatus={staffStatus}
+                                    staffTimes={staffTimes}
+                                    toggleStaffStatus={toggleStaffStatus}
+                                    updateStaffTime={updateStaffTime}
+                                  />
                                 ))}
                             </div>
                           </div>

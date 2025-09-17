@@ -1,12 +1,13 @@
 'use client';
 import { cn } from '@/lib/utils';
 import { useTheme } from 'next-themes';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, memo } from 'react';
 import * as THREE from 'three';
 
 type DottedSurfaceProps = Omit<React.ComponentProps<'div'>, 'ref'>;
 
-export function DottedSurface({ className, ...props }: DottedSurfaceProps) {
+// Memoized DottedSurface component to prevent unnecessary re-renders
+export const DottedSurface = memo(({ className, ...props }: DottedSurfaceProps) => {
 	const { theme } = useTheme();
 	const [webGLError, setWebGLError] = useState(false);
 	const [isVisible, setIsVisible] = useState(false);
@@ -132,7 +133,7 @@ export function DottedSurface({ className, ...props }: DottedSurfaceProps) {
 
 		let count = 0;
 
-		// Animation function
+		// Animation function with optimized rendering
 		const animate = () => {
 			if (!sceneRef.current) return;
 			
@@ -171,11 +172,15 @@ export function DottedSurface({ className, ...props }: DottedSurfaceProps) {
 			}
 		};
 
-		// Handle window resize
+		// Handle window resize with debounce
+		let resizeTimeout: NodeJS.Timeout;
 		const handleResize = () => {
-			camera.aspect = window.innerWidth / window.innerHeight;
-			camera.updateProjectionMatrix();
-			renderer.setSize(window.innerWidth, window.innerHeight);
+			clearTimeout(resizeTimeout);
+			resizeTimeout = setTimeout(() => {
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+				renderer.setSize(window.innerWidth, window.innerHeight);
+			}, 100); // Debounce resize events
 		};
 
 		window.addEventListener('resize', handleResize);
@@ -196,6 +201,7 @@ export function DottedSurface({ className, ...props }: DottedSurfaceProps) {
 		// Cleanup function
 		return () => {
 			window.removeEventListener('resize', handleResize);
+			clearTimeout(resizeTimeout);
 
 			if (sceneRef.current) {
 				cancelAnimationFrame(sceneRef.current.animationId);
@@ -228,7 +234,7 @@ export function DottedSurface({ className, ...props }: DottedSurfaceProps) {
 		return (
 			<div
 				ref={containerRef}
-				className={cn('pointer-events-none fixed inset-0 -z-1 bg-gradient-to-br from-background to-muted transition-opacity duration-1000', 
+				className={cn('pointer-events-none fixed inset-0 -z-10 bg-gradient-to-br from-background to-muted transition-opacity duration-1000', 
 					isVisible ? 'opacity-100' : 'opacity-0', 
 					className)}
 				{...props}
@@ -239,10 +245,12 @@ export function DottedSurface({ className, ...props }: DottedSurfaceProps) {
 	return (
 		<div
 			ref={containerRef}
-			className={cn('pointer-events-none fixed inset-0 -z-1 transition-opacity duration-1000', 
+			className={cn('pointer-events-none fixed inset-0 -z-10 transition-opacity duration-1000', 
 				isVisible ? 'opacity-100' : 'opacity-0', 
 				className)}
 			{...props}
 		/>
 	);
-}
+});
+
+DottedSurface.displayName = 'DottedSurface';
