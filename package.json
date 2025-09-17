@@ -1,5 +1,5 @@
 {
-  "name": "my-v0-project",
+  "name": "restaurant-dashboard",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -61,6 +61,7 @@
     "sonner": "^1.7.4",
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7",
+    "three": "^0.180.0",
     "vaul": "^0.9.9",
     "zod": "3.25.67"
   },
@@ -73,6 +74,7 @@
     "@types/react": "npm:types-react@^19.0.0-rc.1",
     "@types/react-dom": "npm:types-react-dom@^19.0.0-rc.1",
     "@types/testing-library__react": "^10.0.1",
+    "@types/three": "^0.180.0",
     "eslint": "^9.35.0",
     "eslint-config-next": "15.5.3",
     "jest-environment-jsdom": "^30.1.2",

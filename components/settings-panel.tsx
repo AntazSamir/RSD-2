@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -19,6 +19,8 @@ interface SettingsPanelProps {
   holidays: string[]
   addHoliday: (date: string) => void
   removeHoliday: (date: string) => void
+  onReset?: () => void
+  resetTrigger?: number
 }
 
 export function SettingsPanel({
@@ -29,11 +31,40 @@ export function SettingsPanel({
   holidays,
   addHoliday,
   removeHoliday,
+  onReset,
+  resetTrigger = 0,
 }: SettingsPanelProps) {
   const [notifications, setNotifications] = useState(true)
   const [autoAcceptOrders, setAutoAcceptOrders] = useState(false)
   const [soundAlerts, setSoundAlerts] = useState(true)
   const [newHoliday, setNewHoliday] = useState("")
+
+  // Reset local state when resetTrigger changes
+  useEffect(() => {
+    if (resetTrigger > 0) {
+      setNotifications(true)
+      setAutoAcceptOrders(false)
+      setSoundAlerts(true)
+      
+      // Reset form elements to their default values
+      const formElements = document.querySelectorAll('input, select')
+      formElements.forEach(element => {
+        const inputElement = element as HTMLInputElement
+        const selectElement = element as HTMLSelectElement
+        
+        // Handle input elements
+        if (element.tagName === 'INPUT' && inputElement.defaultValue !== undefined) {
+          inputElement.value = inputElement.defaultValue
+        }
+        
+        // Handle select elements
+        if (element.tagName === 'SELECT' && selectElement.children.length > 0) {
+          // Reset to first option or default value if available
+          selectElement.selectedIndex = 0
+        }
+      })
+    }
+  }, [resetTrigger])
 
   const handleAddHoliday = () => {
     if (newHoliday && !holidays.includes(newHoliday)) {

@@ -7,8 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
-import { Clock, Trash2, MoreHorizontal, Calendar, Undo2 } from "lucide-react"
-import { mockOrders, mockMenuItems, mockUsers } from "@/lib/mock-data"
+import { Clock, Trash2, MoreHorizontal, Calendar, Undo2, X } from "lucide-react"
+import { mockOrders, mockMenuItems, mockUsers, cancelOrder } from "@/lib/mock-data"
 import type { Order } from "@/lib/types"
 import { NewOrderForm } from "./new-order-form"
 import { NewOrderDialog } from "./new-order-dialog"
@@ -21,7 +21,6 @@ export function OrdersTable() {
   const [orders, setOrders] = useState(mockOrders)
   const [refreshKey, setRefreshKey] = useState(0)
   const [activeSection, setActiveSection] = useState<"orders" | "history" | "reservations" | "new-order">("orders")
-  const [cancellingOrders, setCancellingOrders] = useState<Set<string>>(new Set())
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [reservationDialogOpen, setReservationDialogOpen] = useState(false)
 
@@ -99,7 +98,6 @@ export function OrdersTable() {
   }
 
   const handleRevert = async (orderId: string) => {
-    setCancellingOrders((prev) => new Set(prev).add(orderId))
     try {
       await new Promise((r) => setTimeout(r, 500))
       const original = mockOrders.find((o) => o.id === orderId)
@@ -108,12 +106,18 @@ export function OrdersTable() {
         original.updatedAt = new Date()
       }
       refreshOrders()
-    } finally {
-      setCancellingOrders((prev) => {
-        const n = new Set(prev)
-        n.delete(orderId)
-        return n
-      })
+    } catch (error) {
+      console.error("Failed to revert order:", error)
+    }
+  }
+
+  const handleCancelOrder = async (orderId: string) => {
+    try {
+      await new Promise((r) => setTimeout(r, 500))
+      cancelOrder(orderId)
+      refreshOrders()
+    } catch (error) {
+      console.error("Failed to cancel order:", error)
     }
   }
 
@@ -201,12 +205,11 @@ export function OrdersTable() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
                 {filteredOrders.map((order) => {
-                  const isProcessing = cancellingOrders.has(order.id)
                   const service = getServiceType(order)
                   const stepIndex = Math.max(0, statusSteps.indexOf(order.status))
                   return (
                     <OrderDetailsDialog key={order.id} order={order} onOrderUpdate={refreshOrders}>
-                      <div className={`rounded-lg border p-4 bg-card cursor-pointer ${isProcessing ? "opacity-50" : ""}`}>
+                      <div className="rounded-lg border p-4 bg-card cursor-pointer">
                         <div className="flex items-start justify-between">
                           <div className="space-y-1">
                             <p className="font-semibold text-sm">ORD-{order.id.padStart(4, "0")}</p>
@@ -267,12 +270,34 @@ export function OrdersTable() {
                             <Clock className="h-3 w-3" /> Updated {new Date(order.updatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                           </div>
                           <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
-                            <Button variant="ghost" size="sm" className="px-2 h-8" onClick={() => handleRevert(order.id)} onMouseDown={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()} disabled={isProcessing}>
-                              {isProcessing ? <LoadingSpinner size="sm" /> : <><Undo2 className="h-4 w-4 mr-1" /> Revert</>}
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="px-2 h-8" 
+                              onClick={() => handleRevert(order.id)} 
+                              onMouseDown={(e) => e.stopPropagation()} 
+                              onPointerDown={(e) => e.stopPropagation()} 
+                            >
+                              <Undo2 className="h-4 w-4 mr-1" /> Revert
                             </Button>
                             <NewOrderDialog editOrderId={order.id} preSelectedTable={String(order.tableNumber)}>
                               <Button variant="outline" size="sm" className="h-8" onMouseDown={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>Modify</Button>
                             </NewOrderDialog>
+                            {order.status !== "cancelled" && order.status !== "served" && (
+                              <Button 
+                                variant="destructive" 
+                                size="sm" 
+                                className="px-2 h-8 hover:scale-105 transition-transform" 
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleCancelOrder(order.id)
+                                }} 
+                                onMouseDown={(e) => e.stopPropagation()} 
+                                onPointerDown={(e) => e.stopPropagation()}
+                              >
+                                <X className="h-4 w-4 mr-1" /> Cancel
+                              </Button>
+                            )}
                           </div>
                         </div>
                       </div>

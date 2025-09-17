@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { SignInPage } from "@/components/sign-in"
+import { DottedSurface } from "@/components/dotted-surface"
 
 export default function SignInPageWrapper() {
   const [loading, setLoading] = useState(false)
@@ -32,13 +33,16 @@ export default function SignInPageWrapper() {
   }
 
   return (
-    <SignInPage
-      title={<span className="font-light text-foreground tracking-tighter">Welcome Back</span>}
-      description="Sign in to your restaurant management dashboard"
-      onSignIn={handleSignIn}
-      onGoogleSignIn={handleGoogleSignIn}
-      onResetPassword={handleResetPassword}
-      onCreateAccount={handleCreateAccount}
-    />
+    <>
+      <DottedSurface />
+      <SignInPage
+        title={<span className="font-light text-foreground tracking-tighter">Welcome Back</span>}
+        description="Sign in to your restaurant management dashboard"
+        onSignIn={handleSignIn}
+        onGoogleSignIn={handleGoogleSignIn}
+        onResetPassword={handleResetPassword}
+        onCreateAccount={handleCreateAccount}
+      />
+    </>
   )
 }
