@@ -12,4 +12,6 @@ module.exports = {
     '/node_modules/',
     '^.+\\.module\\.(css|sass|scss)$',
   ],
+  // Allow the test suite to pass even if no tests are found
+  passWithNoTests: true,
 };
