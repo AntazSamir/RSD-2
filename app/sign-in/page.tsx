@@ -25,7 +25,7 @@ export default function SignInPageWrapper() {
         setError(error.message || 'Failed to sign in')
       } else {
         // Redirect to dashboard on successful sign in
-        window.location.href = "/"
+        window.location.href = "/dashboard"
       }
     } catch (err) {
       setError('An unexpected error occurred')
@@ -38,7 +38,7 @@ export default function SignInPageWrapper() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/`
+          redirectTo: `${window.location.origin}/dashboard`
         }
       })
       

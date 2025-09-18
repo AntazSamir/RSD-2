@@ -25,8 +25,8 @@ export default function SignUpPageWrapper() {
       if (error) {
         setError(error.message || 'Failed to create account')
       } else {
-        // Redirect to sign in page on successful sign up
-        window.location.href = "/sign-in"
+        // Redirect to dashboard on successful sign up
+        window.location.href = "/dashboard"
       }
     } catch (err) {
       setError('An unexpected error occurred')
@@ -39,7 +39,7 @@ export default function SignUpPageWrapper() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/sign-in`
+          redirectTo: `${window.location.origin}/dashboard`
         }
       })
       
