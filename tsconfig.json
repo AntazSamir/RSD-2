@@ -21,7 +21,7 @@
     "paths": {
       "@/*": ["./*"]
     },
-    "types": ["jest", "node"],
+    "types": ["node"],
     "typeRoots": ["./node_modules/@types", "./types"],
     // React 19 specific settings
     "jsxImportSource": "react",
