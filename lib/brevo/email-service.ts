@@ -13,6 +13,11 @@ function createTransporter() {
     port: brevoConfig.smtp.port,
     secure: brevoConfig.smtp.secure,
     auth: { user, pass },
+    pool: true,
+    maxConnections: 3,
+    maxMessages: 50,
+    rateDelta: 1000,
+    rateLimit: 10,
   })
 }
 
@@ -99,26 +104,54 @@ export async function sendEmail(options: {
   html: string
   text?: string
 }) {
-  try {
-    const transporter = createTransporter()
-    if (!transporter) {
-      console.warn('Email not sent: missing SMTP credentials')
-      return { success: false, error: new Error('Missing SMTP credentials') }
-    }
-    const mailOptions = {
-      from: `"${brevoConfig.sender.name}" <${brevoConfig.sender.email}>`,
-      to: Array.isArray(options.to) ? options.to.join(', ') : options.to,
-      subject: options.subject,
-      html: options.html,
-      text: options.text,
-    }
-    const info = await transporter.sendMail(mailOptions)
-    console.log('Email sent successfully:', info.messageId)
-    return { success: true, messageId: info.messageId }
-  } catch (error: any) {
-    console.error('Error sending email:', error)
-    return { success: false, error }
+  const transporter = createTransporter()
+  if (!transporter) {
+    console.warn('Email not sent: missing SMTP credentials')
+    return { success: false, error: new Error('Missing SMTP credentials') }
   }
+
+  const mailOptions = {
+    from: `"${brevoConfig.sender.name}" <${brevoConfig.sender.email}>`,
+    to: Array.isArray(options.to) ? options.to.join(', ') : options.to,
+    subject: options.subject,
+    html: options.html,
+    text: options.text,
+  }
+
+  const maxAttempts = 4
+  let attempt = 0
+  let lastError: any = null
+
+  while (attempt < maxAttempts) {
+    try {
+      const info = await transporter.sendMail(mailOptions)
+      console.log('Email sent successfully:', info.messageId)
+      return { success: true, messageId: info.messageId }
+    } catch (error: any) {
+      lastError = error
+      const message = String(error?.message || '')
+      const code = String(error?.code || '')
+      const status = Number(error?.responseCode || 0)
+      const isRateLimited =
+        code === 'EDAILY' ||
+        code === 'ETEMPFAIL' ||
+        status === 429 ||
+        status === 421 ||
+        /rate.?limit/i.test(message) ||
+        /too many/i.test(message)
+
+      attempt += 1
+      if (!isRateLimited || attempt >= maxAttempts) {
+        console.error('Error sending email:', error)
+        return { success: false, error }
+      }
+
+      const backoffMs = Math.min(15000, 500 * Math.pow(2, attempt))
+      await new Promise((r) => setTimeout(r, backoffMs))
+    }
+  }
+
+  return { success: false, error: lastError }
 }
 
 // Predefined email functions
