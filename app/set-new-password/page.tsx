@@ -16,6 +16,11 @@ export default function SetNewPasswordPage() {
   useEffect(() => {
     const checkToken = async () => {
       try {
+        if (!supabase) {
+          setIsValidToken(false)
+          setError("Supabase is not configured")
+          return
+        }
         // Get the hash fragment from the URL (where Supabase puts the token)
         const hash = window.location.hash.substring(1)
         const params = new URLSearchParams(hash)
@@ -50,6 +55,10 @@ export default function SetNewPasswordPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!supabase) {
+      setError('Supabase is not configured')
+      return
+    }
     
     if (newPassword !== confirmPassword) {
       setError("Passwords do not match")
