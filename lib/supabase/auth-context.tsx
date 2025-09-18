@@ -95,6 +95,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { error } = await supabase.auth.signOut()
       if (error) throw error
       setUser(null)
+      // Redirect to sign in page after sign out
+      window.location.href = "/sign-in"
       return { error }
     } catch (error: any) {
       return { error }

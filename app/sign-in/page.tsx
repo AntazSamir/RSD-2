@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { SignInPage } from "@/components/sign-in"
 import { useAuth } from "@/lib/supabase/auth-context"
 import { supabase } from "@/lib/supabase/client"
@@ -9,6 +10,7 @@ import { ThemeToggle } from "@/components/theme-toggle"
 export default function SignInPageWrapper() {
   const { signIn } = useAuth()
   const [error, setError] = useState<string | null>(null)
+  const router = useRouter()
 
   const handleSignIn = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -24,8 +26,7 @@ export default function SignInPageWrapper() {
       if (error) {
         setError(error.message || 'Failed to sign in')
       } else {
-        // Redirect to dashboard on successful sign in
-        window.location.href = "/dashboard"
+        router.push("/dashboard")
       }
     } catch (err) {
       setError('An unexpected error occurred')
@@ -52,11 +53,11 @@ export default function SignInPageWrapper() {
   }
 
   const handleResetPassword = () => {
-    window.location.href = "/reset-password"
+    router.push("/reset-password")
   }
 
   const handleCreateAccount = () => {
-    window.location.href = "/sign-up"
+    router.push("/sign-up")
   }
 
   return (

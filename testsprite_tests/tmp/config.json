@@ -1,0 +1,15 @@
+{
+  "status": "commited",
+  "type": "frontend",
+  "scope": "codebase",
+  "localEndpoint": "http://localhost:3000",
+  "executionArgs": {
+    "projectName": "restaurent-dashboard-8",
+    "projectPath": "c:\\Users\\rocks\\OneDrive\\Desktop\\Tex\\restaurent-dashboard-8",
+    "testIds": [],
+    "additionalInstruction": "",
+    "envs": {
+      "API_KEY": "sk-user-zcTG3VVbtV6pBnIYhDCUiGZR_ivISH_o7m00GDbgQ61PndCfOz6dVzAOLTFHcRHif0zE9YwdR-K-nylBneWLBkOwcRxL1WBmqJNutWEhD2ftbfT9VOHVm6XhHgTUHi9cOLM"
+    }
+  }
+}

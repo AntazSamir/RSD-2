@@ -14,7 +14,7 @@ export default function ProfilePage() {
       <div className="max-w-3xl mx-auto space-y-4">
         <div className="flex items-center justify-between">
           <h1 className="text-lg font-semibold">Profile</h1>
-          <Link href="/" className="inline-flex">
+          <Link href="/dashboard" className="inline-flex">
             <Button variant="outline" size="sm">Back to Dashboard</Button>
           </Link>
         </div>
@@ -76,5 +76,3 @@ export default function ProfilePage() {
     </div>
   )
 }
-
-

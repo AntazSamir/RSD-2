@@ -74,10 +74,10 @@ export default function SetNewPasswordPage() {
       if (error) {
         setError(error.message || "Failed to update password")
       } else {
-        setMessage("Password updated successfully! Redirecting to sign in...")
-        // Redirect to sign in page after a short delay
+        setMessage("Password updated successfully! Redirecting to dashboard...")
+        // Redirect to dashboard page after a short delay
         setTimeout(() => {
-          window.location.href = "/sign-in"
+          window.location.href = "/dashboard"
         }, 2000)
       }
     } catch (err) {

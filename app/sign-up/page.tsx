@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { SignUpPage } from "@/components/sign-up"
 import { useAuth } from "@/lib/supabase/auth-context"
 import { supabase } from "@/lib/supabase/client"
@@ -9,6 +10,7 @@ import { ThemeToggle } from "@/components/theme-toggle"
 export default function SignUpPageWrapper() {
   const { signUp } = useAuth()
   const [error, setError] = useState<string | null>(null)
+  const router = useRouter()
 
   const handleSignUp = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -25,8 +27,7 @@ export default function SignUpPageWrapper() {
       if (error) {
         setError(error.message || 'Failed to create account')
       } else {
-        // Redirect to dashboard on successful sign up
-        window.location.href = "/dashboard"
+        router.push("/dashboard")
       }
     } catch (err) {
       setError('An unexpected error occurred')
@@ -53,11 +54,11 @@ export default function SignUpPageWrapper() {
   }
 
   const handleResetPassword = () => {
-    window.location.href = "/reset-password"
+    router.push("/reset-password")
   }
 
   const handleSignIn = () => {
-    window.location.href = "/sign-in"
+    router.push("/sign-in")
   }
 
   return (

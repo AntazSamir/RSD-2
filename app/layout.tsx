@@ -4,7 +4,6 @@ import { Inter } from "next/font/google"
 import { Suspense } from "react"
 import { ThemeProvider } from "@/components/theme-provider"
 import { AuthProvider } from "@/lib/supabase/auth-context"
-import { DottedSurface } from "@/components/dotted-surface"
 import "./globals.css"
 
 const inter = Inter({ subsets: ["latin"] })
@@ -22,7 +21,6 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`font-sans ${inter.className}`}>
-        <DottedSurface />
         <AuthProvider>
           <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
             <Suspense fallback={null}>{children}</Suspense>

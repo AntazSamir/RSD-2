@@ -1,0 +1,103 @@
+{
+  "tech_stack": ["TypeScript", "Next.js", "React", "Supabase", "Tailwind CSS", "Radix UI", "Jest", "React Testing Library"],
+  "features": [
+    {
+      "name": "Authentication System",
+      "description": "Supabase authentication with sign-in, sign-up, and password reset functionality",
+      "files": [
+        "app/sign-in/page.tsx",
+        "app/sign-up/page.tsx",
+        "app/reset-password/page.tsx",
+        "app/set-new-password/page.tsx",
+        "lib/supabase/auth-context.tsx",
+        "lib/supabase/client.ts"
+      ]
+    },
+    {
+      "name": "Email Service",
+      "description": "Brevo email service integration for sending notifications and password resets",
+      "files": [
+        "lib/brevo/email-service.ts",
+        "lib/brevo/order-notifications.ts",
+        "lib/brevo/reservation-notifications.ts",
+        "app/api/send-test-email/route.ts",
+        "app/api/send-password-reset/route.ts"
+      ]
+    },
+    {
+      "name": "Dashboard Components",
+      "description": "Main dashboard UI components for restaurant management",
+      "files": [
+        "components/analytics-dashboard.tsx",
+        "components/member-dashboard.tsx",
+        "components/orders-table.tsx",
+        "components/tables-grid.tsx"
+      ]
+    },
+    {
+      "name": "UI Components",
+      "description": "Reusable UI components built with Radix UI and Tailwind CSS",
+      "files": [
+        "components/ui/button.tsx",
+        "components/ui/card.tsx",
+        "components/ui/dialog.tsx",
+        "components/ui/input.tsx",
+        "components/ui/table.tsx"
+      ]
+    },
+    {
+      "name": "Order Management",
+      "description": "Functionality for managing restaurant orders",
+      "files": [
+        "components/orders-table.tsx",
+        "components/new-order-dialog.tsx",
+        "components/edit-order-dialog.tsx",
+        "components/order-details-dialog.tsx"
+      ]
+    },
+    {
+      "name": "Inventory Management",
+      "description": "System for managing restaurant inventory",
+      "files": [
+        "components/inventory-management.tsx",
+        "components/add-inventory-item-dialog.tsx",
+        "components/edit-inventory-item-dialog.tsx"
+      ]
+    },
+    {
+      "name": "Menu Management",
+      "description": "System for managing restaurant menu items",
+      "files": [
+        "components/menu-table.tsx",
+        "components/add-menu-item-dialog.tsx",
+        "components/edit-menu-item-dialog.tsx"
+      ]
+    },
+    {
+      "name": "Customer Management",
+      "description": "System for managing restaurant customers",
+      "files": [
+        "components/customer-management.tsx",
+        "components/customer-details-dialog.tsx",
+        "components/edit-customer-dialog.tsx"
+      ]
+    },
+    {
+      "name": "Staff Management",
+      "description": "System for managing restaurant staff",
+      "files": [
+        "components/member-management.tsx",
+        "components/staff-details-dialog.tsx",
+        "components/edit-staff-time-dialog.tsx"
+      ]
+    },
+    {
+      "name": "Reservations System",
+      "description": "Table reservation system",
+      "files": [
+        "components/reservations-section.tsx",
+        "components/table-details-dialog.tsx"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,162 @@
+{
+  "meta": {
+    "project": "Restaurant Dashboard",
+    "date": "2025-09-13",
+    "prepared_by": "Software Development Manager"
+  },
+  "product_overview": "The Restaurant Dashboard is a comprehensive web application designed to streamline restaurant operations including order management, table reservations, menu and inventory management, staff and customer management, and analytics. Built with modern technologies like Next.js, React, and Supabase, it offers an intuitive interface and robust backend integration for seamless restaurant management and communication.",
+  "core_goals": [
+    "Provide an easy-to-use, all-in-one platform for restaurant managers to oversee daily operations.",
+    "Enable efficient management of orders, tables, menus, inventory, staff, and customers in a centralized dashboard.",
+    "Ensure secure and flexible authentication with email and social login options.",
+    "Facilitate automated email notifications to customers and staff using integrated SMTP service.",
+    "Deliver responsive and accessible UI components for optimal user experience across devices.",
+    "Support real-time updates and data consistency leveraging Supabase backend services.",
+    "Offer comprehensive analytics and reporting tools to inform business decisions."
+  ],
+  "key_features": [
+    "User Authentication with Supabase supporting sign-up, sign-in, password reset, and Google OAuth.",
+    "Order Management system allowing creation, editing, viewing, and tracking of orders with real-time updates.",
+    "Table Reservation system enabling customers to book tables and managers to oversee reservations.",
+    "Menu Management to add, edit, or remove restaurant menu items with inventory tracking.",
+    "Inventory Management for maintaining stock counts and updating inventory items.",
+    "Customer Management to maintain customer profiles and interaction histories.",
+    "Staff Management including staff scheduling, details, and roles management.",
+    "Dashboard Analytics and Reporting components displaying key performance metrics.",
+    "Reusable UI Components built using Radix UI and styled with Tailwind CSS for consistency and accessibility.",
+    "Integrated Email notification service with Brevo SMTP for reservation confirmations, order updates, and password resets."
+  ],
+  "user_flow_summary": [
+    "User visits the application and can sign up or sign in via email/password or Google OAuth.",
+    "Upon authentication, the user lands on the main dashboard displaying analytics and operational data.",
+    "Users navigate to orders section to create, edit, or review orders; changes reflect in real-time.",
+    "Users access table management to view availability, handle reservations, or edit table details.",
+    "Menu and inventory management sections allow users to update restaurant offerings and stock levels.",
+    "Staff management is used to assign roles, set schedules, and edit staff details.",
+    "Customer profiles can be viewed and updated to maintain CRM data.",
+    "Users receive and send email notifications triggered by system events like reservation confirmations or password resets.",
+    "Managers can log out, and sessions persist securely across navigation and reloads."
+  ],
+  "validation_criteria": [
+    "Successful user authentication and session persistence across all supported devices and browsers.",
+    "Real-time synchronization of order, reservation, menu, inventory, staff, and customer data with no data loss or inconsistency.",
+    "All email notifications (reservation confirmations, order notifications, password resets) are reliably sent and received.",
+    "UI components meet accessibility standards and render correctly on a variety of screen sizes and devices.",
+    "Automated and manual tests cover core functionality using Jest and React Testing Library with passing results.",
+    "System handles error states gracefully with appropriate user feedback and logging.",
+    "Database seeding scripts populate sample data accurately and without errors.",
+    "API endpoints for email and authentication respond within acceptable performance thresholds."
+  ],
+  "code_summary": {
+    "tech_stack": [
+      "TypeScript",
+      "Next.js",
+      "React",
+      "Supabase",
+      "Tailwind CSS",
+      "Radix UI",
+      "Jest",
+      "React Testing Library"
+    ],
+    "features": [
+      {
+        "name": "Authentication System",
+        "description": "Supabase authentication with sign-in, sign-up, and password reset functionality",
+        "files": [
+          "app/sign-in/page.tsx",
+          "app/sign-up/page.tsx",
+          "app/reset-password/page.tsx",
+          "app/set-new-password/page.tsx",
+          "lib/supabase/auth-context.tsx",
+          "lib/supabase/client.ts"
+        ]
+      },
+      {
+        "name": "Email Service",
+        "description": "Brevo email service integration for sending notifications and password resets",
+        "files": [
+          "lib/brevo/email-service.ts",
+          "lib/brevo/order-notifications.ts",
+          "lib/brevo/reservation-notifications.ts",
+          "app/api/send-test-email/route.ts",
+          "app/api/send-password-reset/route.ts"
+        ]
+      },
+      {
+        "name": "Dashboard Components",
+        "description": "Main dashboard UI components for restaurant management",
+        "files": [
+          "components/analytics-dashboard.tsx",
+          "components/member-dashboard.tsx",
+          "components/orders-table.tsx",
+          "components/tables-grid.tsx"
+        ]
+      },
+      {
+        "name": "UI Components",
+        "description": "Reusable UI components built with Radix UI and Tailwind CSS",
+        "files": [
+          "components/ui/button.tsx",
+          "components/ui/card.tsx",
+          "components/ui/dialog.tsx",
+          "components/ui/input.tsx",
+          "components/ui/table.tsx"
+        ]
+      },
+      {
+        "name": "Order Management",
+        "description": "Functionality for managing restaurant orders",
+        "files": [
+          "components/orders-table.tsx",
+          "components/new-order-dialog.tsx",
+          "components/edit-order-dialog.tsx",
+          "components/order-details-dialog.tsx"
+        ]
+      },
+      {
+        "name": "Inventory Management",
+        "description": "System for managing restaurant inventory",
+        "files": [
+          "components/inventory-management.tsx",
+          "components/add-inventory-item-dialog.tsx",
+          "components/edit-inventory-item-dialog.tsx"
+        ]
+      },
+      {
+        "name": "Menu Management",
+        "description": "System for managing restaurant menu items",
+        "files": [
+          "components/menu-table.tsx",
+          "components/add-menu-item-dialog.tsx",
+          "components/edit-menu-item-dialog.tsx"
+        ]
+      },
+      {
+        "name": "Customer Management",
+        "description": "System for managing restaurant customers",
+        "files": [
+          "components/customer-management.tsx",
+          "components/customer-details-dialog.tsx",
+          "components/edit-customer-dialog.tsx"
+        ]
+      },
+      {
+        "name": "Staff Management",
+        "description": "System for managing restaurant staff",
+        "files": [
+          "components/member-management.tsx",
+          "components/staff-details-dialog.tsx",
+          "components/edit-staff-time-dialog.tsx"
+        ]
+      },
+      {
+        "name": "Reservations System",
+        "description": "Table reservation system",
+        "files": [
+          "components/reservations-section.tsx",
+          "components/table-details-dialog.tsx"
+        ]
+      }
+    ]
+  }
+}
