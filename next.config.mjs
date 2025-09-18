@@ -11,19 +11,7 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  // Enable webpack optimizations
-  webpack: (config, { dev, isServer }) => {
-    // Reduce bundle size by excluding unnecessary modules
-    if (!dev && !isServer) {
-      config.optimization.minimize = true;
-    }
-    
-    return config;
-  },
-  // Enable experimental optimizations
-  experimental: {
-    optimizeCss: true,
-  },
+  // Use Next.js defaults for CSS handling and webpack
 }
 
 export default nextConfig
