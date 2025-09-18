@@ -1,25 +1,20 @@
 import nodemailer from 'nodemailer'
 import { brevoConfig } from './config'
 
-// Create a transporter using Brevo SMTP
-const transporter = nodemailer.createTransport({
-  host: brevoConfig.smtp.host,
-  port: brevoConfig.smtp.port,
-  secure: brevoConfig.smtp.secure,
-  auth: {
-    user: brevoConfig.smtp.auth.user,
-    pass: brevoConfig.smtp.auth.pass,
-  },
-})
-
-// Verify transporter configuration
-transporter.verify((error: Error | null) => {
-  if (error) {
-    console.error('Brevo SMTP configuration error:', error)
-  } else {
-    console.log('Brevo SMTP server is ready to send emails')
+// Lazily create transporter only when credentials are present and when sending
+function createTransporter() {
+  const user = brevoConfig.smtp.auth.user
+  const pass = brevoConfig.smtp.auth.pass
+  if (!user || !pass) {
+    return null
   }
-})
+  return nodemailer.createTransport({
+    host: brevoConfig.smtp.host,
+    port: brevoConfig.smtp.port,
+    secure: brevoConfig.smtp.secure,
+    auth: { user, pass },
+  })
+}
 
 // Email templates
 export const emailTemplates = {
@@ -105,6 +100,11 @@ export async function sendEmail(options: {
   text?: string
 }) {
   try {
+    const transporter = createTransporter()
+    if (!transporter) {
+      console.warn('Email not sent: missing SMTP credentials')
+      return { success: false, error: new Error('Missing SMTP credentials') }
+    }
     const mailOptions = {
       from: `"${brevoConfig.sender.name}" <${brevoConfig.sender.email}>`,
       to: Array.isArray(options.to) ? options.to.join(', ') : options.to,
@@ -112,7 +112,6 @@ export async function sendEmail(options: {
       html: options.html,
       text: options.text,
     }
-
     const info = await transporter.sendMail(mailOptions)
     console.log('Email sent successfully:', info.messageId)
     return { success: true, messageId: info.messageId }
