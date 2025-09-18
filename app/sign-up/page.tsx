@@ -18,9 +18,19 @@ export default function SignUpPageWrapper() {
     
     try {
       const formData = new FormData(e.currentTarget)
-      const email = formData.get('email') as string
-      const password = formData.get('password') as string
-      const name = formData.get('name') as string
+      const email = (formData.get('email') as string || '').trim()
+      const rawPassword = (formData.get('password') as string || '')
+      const password = rawPassword.trim()
+      const name = (formData.get('name') as string || '').trim()
+
+      if (!email || !password) {
+        setError('Email and password are required')
+        return
+      }
+      if (password.length < 8) {
+        setError('Password must be at least 8 characters')
+        return
+      }
       
       const { error } = await signUp(email, password, name)
 
