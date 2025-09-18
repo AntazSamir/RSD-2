@@ -35,6 +35,10 @@ export default function SignInPageWrapper() {
   }
 
   const handleGoogleSignIn = async () => {
+    if (!supabase) {
+      setError('Supabase is not configured')
+      return
+    }
     try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
