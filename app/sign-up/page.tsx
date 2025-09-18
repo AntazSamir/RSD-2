@@ -23,12 +23,28 @@ export default function SignUpPageWrapper() {
       const name = formData.get('name') as string
       
       const { error } = await signUp(email, password, name)
-      
+
       if (error) {
-        setError(error.message || 'Failed to create account')
-      } else {
-        router.push("/dashboard")
+        // Fallback: ask server to generate and send a signup link via Brevo
+        try {
+          const res = await fetch('/api/send-signup-link', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, customerName: name, redirectTo: `${window.location.origin}/dashboard` })
+          })
+          if (!res.ok) {
+            const data = await res.json().catch(() => ({}))
+            throw new Error(data.error || 'Failed to send confirmation email')
+          }
+          router.push('/sign-in')
+          return
+        } catch (fallbackErr: any) {
+          setError(fallbackErr?.message || 'Failed to create account')
+          return
+        }
       }
+
+      router.push("/dashboard")
     } catch (err) {
       setError('An unexpected error occurred')
       console.error(err)
