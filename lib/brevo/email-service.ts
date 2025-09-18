@@ -13,7 +13,7 @@ const transporter = nodemailer.createTransport({
 })
 
 // Verify transporter configuration
-transporter.verify((error: Error | null, success: boolean) => {
+transporter.verify((error: Error | null) => {
   if (error) {
     console.error('Brevo SMTP configuration error:', error)
   } else {
@@ -22,7 +22,7 @@ transporter.verify((error: Error | null, success: boolean) => {
 })
 
 // Email templates
-const emailTemplates = {
+export const emailTemplates = {
   reservationConfirmation: (data: { 
     customerName: string, 
     reservationDate: string, 

@@ -20,6 +20,7 @@ export const DottedSurface = memo(({ className, ...props }: DottedSurfaceProps) 
 		particles: THREE.Points[];
 		animationId: number;
 		count: number;
+		geometry: THREE.BufferGeometry;
 	} | null>(null);
 
 	useEffect(() => {
@@ -30,6 +31,32 @@ export const DottedSurface = memo(({ className, ...props }: DottedSurfaceProps) 
 
 		return () => clearTimeout(timer);
 	}, []);
+
+	// Effect to update particle colors when theme changes
+	useEffect(() => {
+		if (!sceneRef.current || webGLError) return;
+
+		const { geometry } = sceneRef.current;
+		const colorAttribute = geometry.getAttribute('color');
+		const colors = colorAttribute.array as Float32Array;
+
+		// Update colors based on current theme
+		for (let i = 0; i < colors.length; i += 3) {
+			if (theme === 'dark') {
+				// Light gray/white dots for dark theme
+				colors[i] = 240 / 255;     // R
+				colors[i + 1] = 240 / 255; // G
+				colors[i + 2] = 240 / 255; // B
+			} else {
+				// Dark gray dots for light theme
+				colors[i] = 40 / 255;      // R
+				colors[i + 1] = 40 / 255;  // G
+				colors[i + 2] = 40 / 255;  // B
+			}
+		}
+
+		colorAttribute.needsUpdate = true;
+	}, [theme, webGLError]);
 
 	useEffect(() => {
 		if (!containerRef.current || webGLError) return;
@@ -90,7 +117,6 @@ export const DottedSurface = memo(({ className, ...props }: DottedSurfaceProps) 
 		}
 
 		// Create particles
-		const particles: THREE.Points[] = [];
 		const positions: number[] = [];
 		const colors: number[] = [];
 
@@ -104,10 +130,13 @@ export const DottedSurface = memo(({ className, ...props }: DottedSurfaceProps) 
 				const z = iy * SEPARATION - (AMOUNTY * SEPARATION) / 2;
 
 				positions.push(x, y, z);
+				// Initial color values (normalized to 0-1 range)
 				if (theme === 'dark') {
-					colors.push(200, 200, 200);
+					// Light gray/white dots for dark theme
+					colors.push(240 / 255, 240 / 255, 240 / 255);
 				} else {
-					colors.push(0, 0, 0);
+					// Dark gray dots for light theme
+					colors.push(40 / 255, 40 / 255, 40 / 255);
 				}
 			}
 		}
@@ -196,6 +225,7 @@ export const DottedSurface = memo(({ className, ...props }: DottedSurfaceProps) 
 			particles: [points],
 			animationId: initialAnimationId,
 			count,
+			geometry,
 		};
 
 		// Cleanup function

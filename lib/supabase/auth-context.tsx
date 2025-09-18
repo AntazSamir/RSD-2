@@ -1,6 +1,6 @@
 'use client'
 
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react'
+import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import { User } from '@supabase/supabase-js'
 
@@ -9,6 +9,7 @@ type AuthContextType = {
   signUp: (email: string, password: string, name?: string) => Promise<{ error: Error | null }>
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>
   signOut: () => Promise<{ error: Error | null }>
+  resetPassword: (email: string) => Promise<{ error: Error | null }>
   loading: boolean
 }
 
@@ -100,11 +101,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  const resetPassword = async (email: string) => {
+    try {
+      // First, use Supabase's built-in reset password functionality
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/set-new-password`
+      })
+      
+      if (error) throw error
+      
+      // Send custom email using our API route
+      try {
+        const response = await fetch('/api/send-password-reset', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email,
+            customerName: email.split('@')[0], // Use email prefix as name
+            resetLink: `${window.location.origin}/set-new-password`
+          }),
+        })
+        
+        if (!response.ok) {
+          console.error('Failed to send custom password reset email:', await response.text())
+        }
+      } catch (emailError) {
+        console.error('Failed to send custom password reset email:', emailError)
+        // Don't throw here as the Supabase reset still worked
+      }
+      
+      return { error }
+    } catch (error: any) {
+      return { error }
+    }
+  }
+
   const value = {
     user,
     signUp,
     signIn,
     signOut,
+    resetPassword,
     loading
   }
 

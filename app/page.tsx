@@ -22,7 +22,6 @@ import {
   UserX,
   Package,
   User as UserIcon,
-  LogOut,
 } from "lucide-react"
 import { mockOrders, mockTables, mockStaff, mockBranchStaff } from "@/lib/mock-data"
 import { NewOrderDialog } from "@/components/new-order-dialog"
@@ -40,7 +39,7 @@ const MenuTable = lazy(() => import("@/components/menu-table").then(module => ({
 const TablesGrid = lazy(() => import("@/components/tables-grid").then(module => ({ default: module.TablesGrid })))
 const AnalyticsDashboard = lazy(() => import("@/components/analytics-dashboard").then(module => ({ default: module.AnalyticsDashboard })))
 const BranchReports = lazy(() => import("@/components/branch-reports").then(module => ({ default: module.BranchReports })))
-const CustomerManagement = lazy(() => import("@/components/customer-management").then(module => ({ default: module.default })))
+const CustomerManagement = lazy(() => import("@/components/customer-management"))
 const InventoryManagement = lazy(() => import("@/components/inventory-management").then(module => ({ default: module.InventoryManagement })))
 
 const TabLoadingSpinner = () => (
@@ -219,26 +218,6 @@ export default function RestaurantDashboard() {
     return () => clearInterval(interval)
   }, [lastResetTime, holidays, autoResetEnabled, resetInterval])
 
-  // Memoize expensive calculations
-  const dashboardStats = useMemo(() => {
-    const activeOrders = mockOrders.filter((order) =>
-      ["pending", "confirmed", "preparing"].includes(order.status),
-    ).length
-
-    const occupiedTables = mockTables.filter((table) => table.status === "occupied").length
-    const todayRevenue = mockOrders.reduce((sum, order) => sum + order.totalAmount, 0)
-    const avgOrderTime = 25
-    const occupancyRate = Math.round((occupiedTables / mockTables.length) * 100)
-
-    return {
-      activeOrders,
-      occupiedTables,
-      todayRevenue,
-      avgOrderTime,
-      occupancyRate,
-    }
-  }, []) // Only recompute when mock data changes
-
   // Memoize chart data to prevent recalculation on every render
   const overviewCharts = useMemo(() => {
     // Generate simple, deterministic-ish demo data using mockOrders totals
@@ -289,8 +268,6 @@ export default function RestaurantDashboard() {
       orders: { monthly: ordersMonthly, weekly: ordersWeekly, today: ordersToday },
     }
   }, []) // Only calculate once
-
-  const recentOrders = useMemo(() => mockOrders.slice(0, 3), [])
 
   const getTableOrder = useCallback((tableNumber: number) => {
     return mockOrders.find(

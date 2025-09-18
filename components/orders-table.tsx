@@ -4,11 +4,10 @@ import { useState, useEffect } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
-import { Clock, Trash2, MoreHorizontal, Calendar, Undo2, X } from "lucide-react"
-import { mockOrders, mockMenuItems, mockUsers, cancelOrder } from "@/lib/mock-data"
+import { Clock, Calendar, Undo2, X } from "lucide-react"
+import { mockOrders, mockMenuItems, cancelOrder } from "@/lib/mock-data"
 import type { Order } from "@/lib/types"
 import { NewOrderForm } from "./new-order-form"
 import { NewOrderDialog } from "./new-order-dialog"
@@ -20,9 +19,8 @@ export function OrdersTable() {
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [orders, setOrders] = useState(mockOrders)
   const [refreshKey, setRefreshKey] = useState(0)
-  const [activeSection, setActiveSection] = useState<"orders" | "history" | "reservations" | "new-order">("orders")
+  const [activeSection, setActiveSection] = useState<"orders" | "history" | "reservations" | "new-order">("new-order")
   const [isRefreshing, setIsRefreshing] = useState(false)
-  const [reservationDialogOpen, setReservationDialogOpen] = useState(false)
 
   useEffect(() => {
     setOrders([...mockOrders])
@@ -62,8 +60,6 @@ export function OrdersTable() {
     }
   }
 
-  const statusSteps: Order["status"][] = ["pending", "confirmed", "preparing", "ready", "served"]
-
   // The screenshot shows Delivery/Takeaway/Dine-in; mock a service type from id
   const getServiceType = (order: Order) => {
     const mod = Number.parseInt(order.id) % 3
@@ -81,20 +77,6 @@ export function OrdersTable() {
       default:
         return "bg-emerald-100 text-emerald-800 border-emerald-200"
     }
-  }
-
-  const getWaiterName = (waiterId: string) => {
-    const waiter = mockUsers.find((user) => user.id === waiterId)
-    return waiter?.name || "Unknown"
-  }
-
-  const getOrderItems = (order: Order) => {
-    return order.items
-      .map((item) => {
-        const menuItem = mockMenuItems.find((mi) => mi.id === item.menuItemId)
-        return `${item.quantity}x ${menuItem?.name || "Unknown Item"}`
-      })
-      .join(", ")
   }
 
   const handleRevert = async (orderId: string) => {
@@ -206,7 +188,6 @@ export function OrdersTable() {
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
                 {filteredOrders.map((order) => {
                   const service = getServiceType(order)
-                  const stepIndex = Math.max(0, statusSteps.indexOf(order.status))
                   return (
                     <OrderDetailsDialog key={order.id} order={order} onOrderUpdate={refreshOrders}>
                       <div className="rounded-lg border p-4 bg-card cursor-pointer">
@@ -322,4 +303,3 @@ export function OrdersTable() {
     </div>
   )
 }
-

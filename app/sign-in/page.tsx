@@ -2,18 +2,16 @@
 
 import { useState } from "react"
 import { SignInPage } from "@/components/sign-in"
-import { DottedSurface } from "@/components/dotted-surface"
 import { useAuth } from "@/lib/supabase/auth-context"
 import { supabase } from "@/lib/supabase/client"
+import { ThemeToggle } from "@/components/theme-toggle"
 
 export default function SignInPageWrapper() {
-  const { signIn, loading: authLoading } = useAuth()
-  const [loading, setLoading] = useState(false)
+  const { signIn } = useAuth()
   const [error, setError] = useState<string | null>(null)
 
   const handleSignIn = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    setLoading(true)
     setError(null)
     
     try {
@@ -32,14 +30,12 @@ export default function SignInPageWrapper() {
     } catch (err) {
       setError('An unexpected error occurred')
       console.error(err)
-    } finally {
-      setLoading(false)
     }
   }
 
   const handleGoogleSignIn = async () => {
     try {
-      const { data, error } = await supabase.auth.signInWithOAuth({
+      const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: `${window.location.origin}/`
@@ -56,7 +52,7 @@ export default function SignInPageWrapper() {
   }
 
   const handleResetPassword = () => {
-    console.log("Reset password")
+    window.location.href = "/reset-password"
   }
 
   const handleCreateAccount = () => {
@@ -65,7 +61,9 @@ export default function SignInPageWrapper() {
 
   return (
     <>
-      <DottedSurface />
+      <div className="absolute top-4 right-4">
+        <ThemeToggle />
+      </div>
       <SignInPage
         title={<span className="font-light text-foreground tracking-tighter">Welcome Back</span>}
         description="Sign in to your restaurant management dashboard"
