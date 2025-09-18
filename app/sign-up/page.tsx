@@ -6,6 +6,7 @@ import { SignUpPage } from "@/components/sign-up"
 import { useAuth } from "@/lib/supabase/auth-context"
 import { supabase } from "@/lib/supabase/client"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { DottedSurface } from "@/components/dotted-surface"
 
 export default function SignUpPageWrapper() {
   const { signUp } = useAuth()
@@ -78,6 +79,7 @@ export default function SignUpPageWrapper() {
 
   return (
     <>
+      <DottedSurface />
       <div className="absolute top-4 right-4">
         <ThemeToggle />
       </div>
