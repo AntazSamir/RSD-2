@@ -54,7 +54,7 @@ export function MenuTable() {
         // Simulate API call
         await new Promise((resolve) => setTimeout(resolve, 1000))
         deleteMenuItem(menuItemId)
-        window.location.reload()
+        setRefreshKey((prev) => prev + 1)
       } finally {
         setDeletingItems((prev) => {
           const newSet = new Set(prev)
