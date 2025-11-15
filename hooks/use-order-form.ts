@@ -70,7 +70,7 @@ export function useOrderForm({
   }, [])
 
   const isValid = useMemo(() => {
-    return selectedTable && selectedWaiter && orderItems.length > 0
+    return !!(selectedTable && selectedWaiter && orderItems.length > 0)
   }, [selectedTable, selectedWaiter, orderItems.length])
 
   return {
