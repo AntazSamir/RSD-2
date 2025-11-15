@@ -121,15 +121,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!supabase) {
       return { error: new Error('Supabase is not configured') }
     }
+    
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) {
+      return { error: new Error('Please enter a valid email address') }
+    }
+    
     try {
-      // First, use Supabase's built-in reset password functionality
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      // Use Supabase's built-in reset password functionality
+      // This will send the password reset email via Supabase
+      const { error, data } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/set-new-password`
       })
       
-      if (error) throw error
+      if (error) {
+        // Provide more helpful error messages based on error type
+        let errorMessage = error.message || 'Failed to send password reset email'
+        
+        // Handle specific Supabase error codes
+        if (error.status === 500 || error.message?.includes('500')) {
+          errorMessage = 'Email service is temporarily unavailable. Please check your Supabase email configuration or try again later.'
+        } else if (error.status === 429) {
+          errorMessage = 'Too many requests. Please wait a few minutes before trying again.'
+        } else if (error.message?.includes('rate limit')) {
+          errorMessage = 'Too many password reset requests. Please wait before trying again.'
+        } else if (error.message?.includes('not found') || error.message?.includes('user')) {
+          // Don't reveal if user exists for security, but provide helpful message
+          errorMessage = 'If an account exists with this email, a password reset link will be sent.'
+        }
+        
+        return { error: new Error(errorMessage) }
+      }
       
-      // Send custom email using our API route
+      // Success - Supabase will send the email
+      // Optionally send custom email using our API route (non-blocking)
+      // This is a nice-to-have feature, but Supabase's email will work even if this fails
       try {
         const response = await fetch('/api/send-password-reset', {
           method: 'POST',
@@ -144,16 +171,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         })
         
         if (!response.ok) {
-          console.error('Failed to send custom password reset email:', await response.text())
+          // Log but don't fail - Supabase email was already sent
+          const errorText = await response.text()
+          console.warn('Custom email not sent (Brevo may not be configured):', errorText)
         }
       } catch (emailError) {
-        console.error('Failed to send custom password reset email:', emailError)
-        // Don't throw here as the Supabase reset still worked
+        // Log but don't fail - Supabase email was already sent
+        console.warn('Custom email not sent (Brevo may not be configured):', emailError)
       }
       
-      return { error }
+      return { error: null }
     } catch (error: any) {
-      return { error }
+      // Handle unexpected errors
+      let errorMessage = 'An unexpected error occurred. Please try again.'
+      
+      if (error?.message) {
+        errorMessage = error.message
+      } else if (error?.status === 500) {
+        errorMessage = 'Email service is temporarily unavailable. Please check your Supabase email configuration.'
+      }
+      
+      return { error: new Error(errorMessage) }
     }
   }
 

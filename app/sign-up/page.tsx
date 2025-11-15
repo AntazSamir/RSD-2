@@ -61,7 +61,12 @@ export default function SignUpPageWrapper() {
       })
       
       if (error) {
-        setError(error.message || 'Failed to sign up with Google')
+        // Provide helpful error message for OAuth configuration issues
+        if (error.message?.includes('not enabled') || error.message?.includes('provider')) {
+          setError('Google OAuth is not enabled. Please enable it in your Supabase dashboard under Authentication → Providers.')
+        } else {
+          setError(error.message || 'Failed to sign up with Google')
+        }
       }
     } catch (err) {
       setError('An unexpected error occurred')

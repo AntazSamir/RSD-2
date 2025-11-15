@@ -14,8 +14,13 @@ import { Plus } from "lucide-react"
 import { addMenuItem, getNextMenuItemId } from "@/lib/mock-data"
 import type { MenuItem } from "@/lib/types"
 
-export function AddMenuItemDialog() {
+interface AddMenuItemDialogProps {
+  onItemAdded?: () => void
+}
+
+export function AddMenuItemDialog({ onItemAdded }: AddMenuItemDialogProps = {}) {
   const [open, setOpen] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -36,7 +41,7 @@ export function AddMenuItemDialog() {
     })
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     if (!formData.name || !formData.category || !formData.price || !formData.preparationTime) {
@@ -44,20 +49,40 @@ export function AddMenuItemDialog() {
       return
     }
 
-    const newMenuItem: MenuItem = {
-      id: getNextMenuItemId(),
-      name: formData.name,
-      description: formData.description,
-      price: Number.parseFloat(formData.price),
-      category: formData.category,
-      preparationTime: Number.parseInt(formData.preparationTime),
-      available: formData.available,
-    }
+    setIsSubmitting(true)
 
-    addMenuItem(newMenuItem)
-    setOpen(false)
-    resetForm()
-    window.location.reload() // Simple refresh to show new item
+    try {
+      const newMenuItem: MenuItem = {
+        id: getNextMenuItemId(),
+        name: formData.name,
+        description: formData.description,
+        price: Number.parseFloat(formData.price),
+        category: formData.category,
+        preparationTime: Number.parseInt(formData.preparationTime),
+        available: formData.available,
+      }
+
+      addMenuItem(newMenuItem)
+      
+      // Call the callback if provided
+      if (onItemAdded) {
+        onItemAdded()
+      }
+      
+      setOpen(false)
+      resetForm()
+      
+      // Trigger a page refresh to show the new item in the menu list
+      // Using setTimeout to ensure the dialog closes before reload
+      setTimeout(() => {
+        window.location.reload()
+      }, 100)
+    } catch (error) {
+      console.error("Error adding menu item:", error)
+      alert("Failed to add menu item. Please try again.")
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -152,10 +177,12 @@ export function AddMenuItemDialog() {
           </div>
 
           <div className="flex justify-end gap-2 pt-4">
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+            <Button type="button" variant="outline" onClick={() => setOpen(false)} disabled={isSubmitting}>
               Cancel
             </Button>
-            <Button type="submit">Add Menu Item</Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "Adding..." : "Add Menu Item"}
+            </Button>
           </div>
         </form>
       </DialogContent>

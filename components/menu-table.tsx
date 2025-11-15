@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -24,8 +24,18 @@ export function MenuTable() {
   const [deletingItems, setDeletingItems] = useState<Set<string>>(new Set())
   const [togglingItems, setTogglingItems] = useState<Set<string>>(new Set())
 
-  const menuFilters = useMenuFilters(mockMenuItems)
-
+  // Track menu items in state to ensure updates are reflected
+  // When refreshKey changes, re-read from mockMenuItems
+  const [menuItems, setMenuItems] = useState(mockMenuItems)
+  
+  useEffect(() => {
+    // Re-read menu items when refreshKey changes
+    setMenuItems([...mockMenuItems])
+  }, [refreshKey])
+  
+  const menuFilters = useMenuFilters(menuItems)
+  
+  // Update filtered items when refreshKey changes to pick up new items
   const filteredItems = menuFilters.filteredItems.filter((item) => {
     const isAvailable = item.available || removingItems.has(item.id)
     return isAvailable
@@ -66,7 +76,7 @@ export function MenuTable() {
   }
 
   const handleAvailabilityToggle = async (menuItemId: string) => {
-    const item = mockMenuItems.find((i) => i.id === menuItemId)
+    const item = menuItems.find((i) => i.id === menuItemId)
 
     setTogglingItems((prev) => new Set(prev).add(menuItemId))
 
@@ -119,7 +129,7 @@ export function MenuTable() {
           className="flex-1 sm:flex-none gap-2"
         >
           <EyeOff className="h-4 w-4" />
-          Unavailable Items ({mockMenuItems.filter((item) => !item.available).length})
+          Unavailable Items ({menuItems.filter((item) => !item.available).length})
         </Button>
       </div>
 
@@ -151,7 +161,12 @@ export function MenuTable() {
                   <SelectItem value="beverage">Beverages</SelectItem>
                 </SelectContent>
               </Select>
-              <AddMenuItemDialog />
+              <AddMenuItemDialog 
+                onItemAdded={() => {
+                  // Force re-render by updating refresh key
+                  setRefreshKey((prev) => prev + 1)
+                }}
+              />
             </div>
           </CardHeader>
           <CardContent>

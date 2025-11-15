@@ -22,8 +22,20 @@ export async function POST(request: Request) {
     if (result.success) {
       return NextResponse.json({ success: true })
     } else {
+      // Return a more helpful error message
+      const errorMessage = result.error?.message || 'Unknown error'
+      if (errorMessage.includes('Missing SMTP credentials') || errorMessage.includes('SMTP')) {
+        return NextResponse.json(
+          { 
+            error: 'Email service not configured', 
+            details: 'Brevo SMTP credentials are missing. Please configure BREVO_SMTP_USER and BREVO_SMTP_PASS in .env.local. Note: Supabase will still send the password reset email.',
+            requiresConfig: true
+          },
+          { status: 503 } // Service Unavailable
+        )
+      }
       return NextResponse.json(
-        { error: 'Failed to send email', details: result.error },
+        { error: 'Failed to send email', details: errorMessage },
         { status: 500 }
       )
     }

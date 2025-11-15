@@ -9,8 +9,9 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Calendar, Clock, Users, Phone, MessageSquare, CheckCircle, XCircle, Utensils, Edit } from "lucide-react"
+import { Calendar, Clock, Users, Phone, MessageSquare, CheckCircle, XCircle, Utensils, Edit, Plus } from "lucide-react"
 import { mockMenuItems } from "@/lib/mock-data"
+import { NewOrderDialog } from "./new-order-dialog"
 
 // Mock reservation data
 const mockReservations = [
@@ -82,6 +83,7 @@ const mockReservations = [
 export function ReservationsSection() {
   const [reservations, setReservations] = useState(mockReservations)
   const [editOpen, setEditOpen] = useState(false)
+  const [createReservationOpen, setCreateReservationOpen] = useState(false)
   const [editingReservation, setEditingReservation] = useState<typeof mockReservations[number] | null>(null)
 
   const getStatusColor = (status: string) => {
@@ -166,9 +168,15 @@ export function ReservationsSection() {
 
   return (
     <div className="space-y-4 sm:space-y-6">
-      <div className="flex items-center gap-2">
-        <Calendar className="h-5 w-5 text-primary" />
-        <h2 className="text-lg font-semibold">Reservations</h2>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Calendar className="h-5 w-5 text-primary" />
+          <h2 className="text-lg font-semibold">Reservations</h2>
+        </div>
+        <Button onClick={() => setCreateReservationOpen(true)} size="sm">
+          <Plus className="h-4 w-4 mr-2" />
+          Create Reservation
+        </Button>
       </div>
 
       <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-2">
@@ -432,6 +440,13 @@ export function ReservationsSection() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Create Reservation Dialog */}
+      <NewOrderDialog
+        open={createReservationOpen}
+        onOpenChange={setCreateReservationOpen}
+        forceReservationMode={true}
+      />
     </div>
   )
 }

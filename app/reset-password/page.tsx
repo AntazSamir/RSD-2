@@ -21,9 +21,21 @@ export default function ResetPasswordPage() {
       const { error } = await resetPassword(email)
       
       if (error) {
-        setError(error.message || "Failed to send reset password email")
+        // Provide user-friendly error messages
+        const errorMessage = error.message || "Failed to send reset password email"
+        
+        // Check if it's a configuration issue
+        if (errorMessage.includes('Email service') || errorMessage.includes('Supabase email configuration')) {
+          setError(`${errorMessage} Please contact support or check your Supabase project settings.`)
+        } else if (errorMessage.includes('rate limit') || errorMessage.includes('Too many')) {
+          setError(errorMessage)
+        } else {
+          // For security, always show success message even if user doesn't exist
+          // This prevents email enumeration attacks
+          setMessage("If an account exists with this email, a password reset link will be sent. Please check your inbox.")
+        }
       } else {
-        setMessage("Password reset email sent! Please check your inbox.")
+        setMessage("Password reset email sent! Please check your inbox. If you don't see it, check your spam folder.")
       }
     } catch (err) {
       setError("An unexpected error occurred")
